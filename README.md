@@ -1,3 +1,7 @@
+This repository has build artifacts for RayTraceAntiXray (forked by Taucubed for non-ProtocolLib)
+
+Go to https://github.com/JosTheDude/RayTraceAntiXray/actions and click on the latest run, then download the `artifact`
+
 # RayTraceAntiXray
 Paper plugin for server-side async multithreaded ray tracing to hide ores that are exposed to air using Paper Anti-Xray engine-mode 1.
 
