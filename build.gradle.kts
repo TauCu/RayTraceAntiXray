@@ -1,10 +1,10 @@
 plugins {
     id("java")
-    id("io.papermc.paperweight.userdev") version "2.0.0-SNAPSHOT"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.16"
 }
 
 group = "com.vanillage.raytraceantixray"
-version = "1.17.0"
+version = "1.17.1"
 description = "RayTraceAntiXray"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
@@ -20,9 +20,9 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.4-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.5-R0.1-SNAPSHOT")
 
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.5-R0.1-SNAPSHOT")
     //compileOnly("io.papermc.paper:paper-mojangapi:1.21-R0.1-SNAPSHOT")
     compileOnly("com.mojang:datafixerupper:5.0.28")
     //compileOnly("com.comphenix.protocol:ProtocolLib:5.0.0")
@@ -40,11 +40,6 @@ java {
 }
 
 tasks {
-    // Configure reobfJar to run when invoking the build task
-    assemble {
-        dependsOn(reobfJar)
-    }
-
     compileJava {
         // Set the release flag. This configures what version bytecode the compiler will emit, as well as what JDK APIs are usable.
         // See https://openjdk.java.net/jeps/247 for more information.

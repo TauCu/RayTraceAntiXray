@@ -24,6 +24,8 @@ public class DuplexHandler extends ChannelDuplexHandler {
     }
 
     public Channel getAttachedChannel() {
+        if (channel != null && channel.pipeline().get(name) != this)
+            channel = null;
         return channel;
     }
 
@@ -63,7 +65,9 @@ public class DuplexHandler extends ChannelDuplexHandler {
 
     public static void detach(Channel channel, String name) {
         try {
-            channel.pipeline().remove(name);
+            if (channel.pipeline().remove(name) instanceof DuplexHandler handler) {
+                handler.channel = null;
+            }
         } catch (NoSuchElementException ignored) {}
     }
 
