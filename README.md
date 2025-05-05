@@ -1,7 +1,3 @@
-This repository has build artifacts for RayTraceAntiXray (forked by Taucubed for non-ProtocolLib)
-
-Go to https://github.com/JosTheDude/RayTraceAntiXray/actions and click on the latest run, then download the `artifact`
-
 # RayTraceAntiXray
 Paper plugin for server-side async multithreaded ray tracing to hide ores that are exposed to air using Paper Anti-Xray engine-mode 1.
 
@@ -11,8 +7,7 @@ Paper Anti-Xray can't hide ores that are exposed to air in caves for example (se
 ## How to install
 * Download and install [Paper](https://papermc.io/downloads/paper) 1.21.4. Folia is supported since Minecraft 1.20.1.
 * Enable [Paper Anti-Xray](https://docs.papermc.io/paper/anti-xray) using `engine-mode: 1`.
-* Download and install [ProtocolLib](https://www.spigotmc.org/resources/protocollib.1997/).
-* Download and install [RayTraceAntiXray](https://builtbybit.com/resources/raytraceantixray.24914/). (For older Minecraft versions, browse the update history.)
+* Grab the latest build artifact [here](https://github.com/TauCubed/RayTraceAntiXray/actions) by clicking the latest successful run and downloaded the `artifact.zip` inside. (the jar will be inside) (For older Minecraft versions, browse the update history.)
 * Configure RayTraceAntiXray by editing the file plugins/RayTraceAntiXray/[config.yml](RayTraceAntiXray/src/main/resources/config.yml).
 * See also: [Recommended settings](https://gist.github.com/stonar96/69ca0311392188b7ac2ece226286147f).
 * Note that you should restart your server after each of these steps. Don't enable, disable or reload this plugin on a running server under any circumstances (e.g. using `/reload`, plugin managers, etc.). It won't work properly and will cause issues.
