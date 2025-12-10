@@ -2,7 +2,6 @@ package com.vanillage.raytraceantixray.antixray;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.ChunkBlocks;
-
 import io.papermc.paper.antixray.BitStorageReader;
 import io.papermc.paper.antixray.BitStorageWriter;
 import io.papermc.paper.antixray.ChunkPacketBlockController;
@@ -17,7 +16,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -152,7 +151,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
             traceGlobal = new boolean[Block.BLOCK_STATE_REGISTRY.size()];
 
             for (String id : toTrace) {
-                Block block = BuiltInRegistries.BLOCK.getOptional(ResourceLocation.parse(id)).orElse(null);
+                Block block = BuiltInRegistries.BLOCK.getOptional(Identifier.parse(id)).orElse(null);
 
                 // Don't obfuscate air because air causes unnecessary block updates and causes block updates to fail in the void
                 if (block != null && !block.defaultBlockState().isAir()) {
@@ -235,15 +234,20 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
             return;
         }
 
-        if (!Bukkit.isPrimaryThread()) {
-            // Plugins?
-            MinecraftServer.getServer().scheduleOnMain(() -> modifyBlocks(chunkPacket, chunkPacketInfo));
-            return;
-        }
-
         LevelChunk chunk = chunkPacketInfo.getChunk();
         int x = chunk.getPos().x;
         int z = chunk.getPos().z;
+
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getRegionScheduler().execute(
+                    plugin,
+                    chunk.getLevel().getWorld(),
+                    x, z,
+                    () -> modifyBlocks(chunkPacket, chunkPacketInfo)
+            );
+            return;
+        }
+
         Level level = chunk.getLevel();
         ((ChunkPacketInfoAntiXray) chunkPacketInfo).setNearbyChunks(level.getChunkIfLoaded(x - 1, z), level.getChunkIfLoaded(x + 1, z), level.getChunkIfLoaded(x, z - 1), level.getChunkIfLoaded(x, z + 1));
         executor.execute((Runnable) chunkPacketInfo);
