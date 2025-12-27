@@ -18,6 +18,7 @@
 #       ray-trace-distance: 64.0                # Blocks with a greater distance between the block center and the player eye are not calculated and will thus stay hidden or revealed depending on the previous state.
 #       rehide-blocks: true                     # Whether or not to rehide revealed blocks that the player can no longer see. If false, revealed (already seen) blocks are only rehidden when the chunk is resent.
 #       rehide-distance: 60.0                   # Blocks with a greater or equal distance between the block center and the player eye are treated as invisible to the player and are therefore (re)hidden (provided that rehide-blocks is enabled and the distance is still within the ray-trace-distance). If rehide-blocks is disabled, this setting has a similar effect as the ray-trace-distance and no effect if it is greater than the ray-trace-distance.
+#       bypass-rehide-blocks: []                # Blocks that will never rehide
 #       ### Block selection related settings ###
 #       # The following settings are used to determine the list of block positions to be hidden and ray traced when a chunk is sent to a player.
 #       # Note that this list is not updated dynamically with newly placed or broken blocks until the chunk is resent.
@@ -46,4 +47,5 @@ world-settings:
       max-ray-trace-block-count-per-chunk: 100
       rehide-blocks: false
       rehide-distance: .inf
+      bypass-rehide-blocks: []
       ray-trace-blocks: []

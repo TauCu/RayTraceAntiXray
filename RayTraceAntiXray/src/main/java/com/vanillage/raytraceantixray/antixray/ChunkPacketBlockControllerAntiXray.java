@@ -16,7 +16,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.resources.Identifier;
+
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -66,13 +66,26 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
     private final int[] presetBlockStateBitsNetherrackGlobal;
     private final int[] presetBlockStateBitsEndStoneGlobal;
     public final boolean[] solidGlobal = new boolean[Block.BLOCK_STATE_REGISTRY.size()];
+    public final Set<Block> bypassRehideBlocks;
     private final boolean[] obfuscateGlobal = new boolean[Block.BLOCK_STATE_REGISTRY.size()];
     private final boolean[] traceGlobal;
     private final boolean[] blockEntityGlobal = new boolean[Block.BLOCK_STATE_REGISTRY.size()];
     private final LevelChunkSection[] emptyNearbyChunkSections = {EMPTY_SECTION, EMPTY_SECTION, EMPTY_SECTION, EMPTY_SECTION};
     private final int maxBlockHeightUpdatePosition;
 
-    public ChunkPacketBlockControllerAntiXray(RayTraceAntiXray plugin, ChunkPacketBlockController oldController, boolean rayTraceThirdPerson, double rayTraceDistance, boolean rehideBlocks, double rehideDistance, int maxRayTraceBlockCountPerChunk, Iterable<? extends String> toTrace, Level level, Executor executor) {
+    public ChunkPacketBlockControllerAntiXray(
+            RayTraceAntiXray plugin,
+            ChunkPacketBlockController oldController,
+            boolean rayTraceThirdPerson,
+            double rayTraceDistance,
+            boolean rehideBlocks,
+            double rehideDistance,
+            int maxRayTraceBlockCountPerChunk,
+            Iterable<? extends String> toTrace,
+            Iterable<? extends String> bypassRehideBlocks,
+            Level level,
+            Executor executor
+    ) {
         this.plugin = plugin;
         this.oldController = oldController;
         this.executor = executor;
@@ -152,7 +165,13 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
             traceGlobal = new boolean[Block.BLOCK_STATE_REGISTRY.size()];
 
             for (String id : toTrace) {
-                Block block = BuiltInRegistries.BLOCK.getOptional(Identifier.parse(id)).orElse(null);
+                Block block = null;
+                try {
+                    block = getBlock(id);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to parse ray-trace-block: " + id);
+                    e.printStackTrace();
+                }
 
                 // Don't obfuscate air because air causes unnecessary block updates and causes block updates to fail in the void
                 if (block != null && !block.defaultBlockState().isAir()) {
@@ -162,6 +181,24 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                         traceGlobal[blockStateId] = true;
                         obfuscateGlobal[blockStateId] = true;
                     }
+                }
+            }
+        }
+
+        if (bypassRehideBlocks == null) {
+            this.bypassRehideBlocks = null;
+        } else {
+            this.bypassRehideBlocks = new HashSet<>();
+
+            for (String id : bypassRehideBlocks) {
+                try {
+                    Block block = getBlock(id);
+                    if (block != null) {
+                        this.bypassRehideBlocks.add(block);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to parse bypass-rehide-block: " + id);
+                    e.printStackTrace();
                 }
             }
         }
@@ -1099,5 +1136,29 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         default void nextLayer() {
 
         }
+    }
+
+    private static Block getBlock(String id) throws Exception {
+        Class<?> keyClass;
+        try {
+            keyClass = Class.forName("net.minecraft.resources.ResourceLocation");
+        } catch (ClassNotFoundException e) {
+            keyClass = Class.forName("net.minecraft.resources.Identifier");
+        }
+
+        Object key;
+        try {
+            java.lang.reflect.Method parseMethod = keyClass.getMethod("parse", String.class);
+            key = parseMethod.invoke(null, id);
+        } catch (NoSuchMethodException e) {
+            java.lang.reflect.Constructor<?> ctor = keyClass.getConstructor(String.class);
+            key = ctor.newInstance(id);
+        }
+
+        java.lang.reflect.Method getOptionalMethod = BuiltInRegistries.BLOCK.getClass().getMethod("getOptional",
+                keyClass);
+        java.util.Optional<?> optional = (java.util.Optional<?>) getOptionalMethod.invoke(BuiltInRegistries.BLOCK, key);
+
+        return (Block) optional.orElse(null);
     }
 }
