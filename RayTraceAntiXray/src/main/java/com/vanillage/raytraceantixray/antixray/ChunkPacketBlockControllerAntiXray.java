@@ -424,18 +424,20 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                         presetBlockStateBitsTemp[i] = chunkPacketInfoAntiXray.getPalette(chunkSectionIndex).idFor(presetBlockStatesFull[i], PaletteResize.noResizeExpected());
                     }
                     } catch (IllegalArgumentException e) {
-                        errorCount++;
-
+                        
                         if (errorCount <= 3) {
                             if (RayTraceAntiXray.isDebugEnabled()) {
                                 this.plugin.getLogger()
                                         .warning("Failed to get preset block state ID from palette for chunk section "
-                                                + chunkSectionIndex + " in chunk " + chunk.getPos() + " in dimension "
-                                                + level.dimension()
-                                                + ". The chunk section will be skipped for obfuscation. This warning will be shown up to 3 times.");
-                                e.printStackTrace();
+                                        + chunkSectionIndex + " in chunk " + chunk.getPos() + " in dimension "
+                                        + level.dimension()
+                                        + ". The chunk section will be skipped for obfuscation. This warning will be shown up to 3 times.");
+                                        e.printStackTrace();
                             }
                         }
+
+                        errorCount++;
+                        
                         if (errorCount >= 4) {
 
                             // Reset errorCount to avoid multiple messages for every chunk section
