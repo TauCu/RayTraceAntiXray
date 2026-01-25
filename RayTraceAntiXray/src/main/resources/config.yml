@@ -34,6 +34,7 @@
 #       ray-trace: false                        # Disable ray tracing in the world lobby.
 
 settings:
+  debug: false
   anti-xray:
     update-ticks: 2
     ms-per-ray-trace-tick: 50

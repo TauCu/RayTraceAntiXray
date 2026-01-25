@@ -37,3 +37,9 @@ replay_pid*
 # RayTraceAntiXray
 /Libs/cache/
 /Libs/versions/
+
+# binaries
+/bin/
+
+# allow gradle wrapper jar, to make the repo buildable and self-contained
+!gradle/wrapper/gradle-wrapper.jar

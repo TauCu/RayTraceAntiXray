@@ -54,6 +54,16 @@ public final class RayTraceAntiXray extends JavaPlugin {
     private Timer timer;
     private long updateTicks = 1L;
 
+    public static RayTraceAntiXray getInstance() {
+        return JavaPlugin.getPlugin(RayTraceAntiXray.class);
+    }
+    
+    public static boolean isDebugEnabled(){
+        RayTraceAntiXray plugin = RayTraceAntiXray.getInstance();
+        FileConfiguration config = plugin.getConfig();
+        return config.getBoolean("settings.debug", false);
+    }
+
     @Override
     public void onEnable() {
         if (!new File(getDataFolder(), "README.txt").exists()) {

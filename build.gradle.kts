@@ -1,10 +1,10 @@
 plugins {
     id("java")
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
+    id("io.papermc.paperweight.userdev").version("2.0.0-beta.17")
 }
 
 group = "com.vanillage.raytraceantixray"
-version = "1.17.5"
+version = "1.17.6"
 description = "RayTraceAntiXray"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
