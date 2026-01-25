@@ -395,6 +395,8 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         for (int chunkSectionIndex = 0; chunkSectionIndex <= maxChunkSectionIndex; chunkSectionIndex++) {
             if (chunkPacketInfoAntiXray.isWritten(chunkSectionIndex) && chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex) != null) {
                 int[] presetBlockStateBitsTemp;
+                // Stacktraces counter. Only show up to 3 times per chunk section to avoid log flooding.
+                int errorCount = 0;
 
                 if (chunkPacketInfoAntiXray.getPalette(chunkSectionIndex) instanceof GlobalPalette) {
                     if (engineMode == EngineMode.HIDE) {
@@ -415,11 +417,38 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                     // If it's presetBlockStates, use this.presetBlockStatesFull instead
                     BlockState[] presetBlockStatesFull = chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex) == presetBlockStates ? this.presetBlockStatesFull : chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex);
                     presetBlockStateBitsTemp = presetBlockStateBits;
-
+                    try {
                     for (int i = 0; i < presetBlockStateBitsTemp.length; i++) {
                         // This is thread safe because we only request IDs that are guaranteed to be in the palette and are visible
                         // For more details see the comments in the readPalette method
                         presetBlockStateBitsTemp[i] = chunkPacketInfoAntiXray.getPalette(chunkSectionIndex).idFor(presetBlockStatesFull[i], PaletteResize.noResizeExpected());
+                    }
+                    } catch (IllegalArgumentException e) {
+                        
+                        if (errorCount <= 3) {
+                            if (RayTraceAntiXray.isDebugEnabled()) {
+                                this.plugin.getLogger()
+                                        .warning("Failed to get preset block state ID from palette for chunk section "
+                                        + chunkSectionIndex + " in chunk " + chunk.getPos() + " in dimension "
+                                        + level.dimension()
+                                        + ". The chunk section will be skipped for obfuscation. This warning will be shown up to 3 times.");
+                                        e.printStackTrace();
+                            }
+                        }
+
+                        errorCount++;
+                        
+                        if (errorCount >= 4) {
+
+                            // Reset errorCount to avoid multiple messages for every chunk section
+                            errorCount = 0;
+                            // The palette doesn't contain the preset block states - this can happen when
+                            // another plugin
+                            // (like FartherViewDistance) creates chunk packets with minimal palettes that
+                            // don't include
+                            // the obfuscation blocks. Skip obfuscation for this chunk section.
+                            continue;
+                        }
                     }
                 }
 
