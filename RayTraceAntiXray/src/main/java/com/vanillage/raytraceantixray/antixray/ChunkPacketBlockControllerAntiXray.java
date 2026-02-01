@@ -545,23 +545,34 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
 
         if (!blockEntities.isEmpty()) {
             try {
-                List<?> blockEntitiesData = (List<?>) BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().getChunkData());
-                ChunkPos chunkPos = chunk.getPos();
-                int minX = chunkPos.getMinBlockX();
-                int minZ = chunkPos.getMinBlockZ();
-                MutableBlockPos mutableBlockPos = new MutableBlockPos();
+                final List<?> blockEntitiesData = (List<?>) ChunkPacketBlockControllerAntiXray.BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().getChunkData());
+                // Skip if blockEntitiesData is null or empty - may happen with FartherViewDistance chunks
+                if (blockEntitiesData != null && !blockEntitiesData.isEmpty()) {
+                    final ChunkPos chunkPos = chunk.getPos();
+                    final int minX = chunkPos.getMinBlockX();
+                    final int minZ = chunkPos.getMinBlockZ();
+                    final MutableBlockPos mutableBlockPos = new MutableBlockPos();
 
                 blockEntitiesData.removeIf(blockEntityData -> {
                     try {
-                        int packedXZ = PACKED_X_Z_FIELD.getInt(blockEntityData);
-                        return blockEntities.contains(mutableBlockPos.set(minX + (packedXZ >>> 4), Y_FIELD.getInt(blockEntityData), minZ + (packedXZ & 15)));
-                    } catch (IllegalAccessException e) {
+                            final int packedXZ = ChunkPacketBlockControllerAntiXray.PACKED_X_Z_FIELD.getInt(blockEntityData);
+                            return blockEntities.contains(mutableBlockPos.set(minX + (packedXZ >>> 4), ChunkPacketBlockControllerAntiXray.Y_FIELD.getInt(blockEntityData), minZ + (packedXZ & 15)));
+                        } catch (final IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
                 });
-                // TODO: Also remove from chunkPacketInfoAntiXray.getChunkPacket().getExtraPackets(), however, it's unlikely that it contains anything.
-            } catch (IllegalAccessException e) {
+                }
+            // TODO: Also remove from chunkPacketInfoAntiXray.getChunkPacket().getExtraPackets(), however, it's unlikely that it contains anything.
+            } catch (final IllegalAccessException e) {
                 throw new RuntimeException(e);
+            } catch (final Exception e) {
+                // Silently ignore - this can happen with FartherViewDistance or other plugins
+                // that create chunk packets with different internal state. The block entity
+                // removal is not critical for functionality, only for hiding block entities
+                // that should be obfuscated.
+                if (RayTraceAntiXray.isDebugEnabled()) {
+                    this.plugin.getLogger().warning("Failed to remove obfuscated block entities from chunk packet for chunk " + chunk.getPos() + ": " + e.getMessage());
+                }
             }
         }
 
