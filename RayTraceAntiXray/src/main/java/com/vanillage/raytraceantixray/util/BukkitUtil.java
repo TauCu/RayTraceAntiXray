@@ -1,21 +1,20 @@
 package com.vanillage.raytraceantixray.util;
 
-import net.minecraft.server.MinecraftServer;
 import org.bukkit.Bukkit;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public class BukkitUtil {
 
-    public static final boolean IS_PAPER = isPaper();
     public static final boolean IS_FOLIA = isFolia();
 
-    public static boolean isRunning() {
-        return MinecraftServer.getServer().getTickCount() > 0;
-    }
-
-    private static boolean isPaper() {
-        ClassLoader cl = ClassLoader.getSystemClassLoader();
-        return cl.getResource("io/papermc/paper") != null || cl.getResource("io/papermc/paperclip") != null
-                || cl.getResource("com/destroystokyo/paper") != null || cl.getResource("com/destroystokyo/paperclip") != null;
+    public static String stacktraceToString(Throwable msg) {
+        var sw = new StringWriter();
+        try (var pw = new PrintWriter(sw)) {
+            msg.printStackTrace(pw);
+        }
+        return sw.toString();
     }
 
     private static boolean isFolia() {

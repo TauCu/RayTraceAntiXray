@@ -39,8 +39,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 import java.io.File;
-import java.util.Timer;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 
@@ -53,15 +52,13 @@ public final class RayTraceAntiXray extends JavaPlugin {
     private ExecutorService executorService;
     private Timer timer;
     private long updateTicks = 1L;
+    private boolean debug;
+    // Set of messages and errors this plugin instance has nagged about.
+    // Used to prevent console spam.
+    private final Set<String> nagged = Collections.synchronizedSet(new HashSet<>());
 
     public static RayTraceAntiXray getInstance() {
         return JavaPlugin.getPlugin(RayTraceAntiXray.class);
-    }
-    
-    public static boolean isDebugEnabled(){
-        RayTraceAntiXray plugin = RayTraceAntiXray.getInstance();
-        FileConfiguration config = plugin.getConfig();
-        return config.getBoolean("settings.debug", false);
     }
 
     @Override
@@ -69,6 +66,7 @@ public final class RayTraceAntiXray extends JavaPlugin {
         if (!new File(getDataFolder(), "README.txt").exists()) {
             saveResource("README.txt", false);
         }
+        nagged.clear();
 
         saveDefaultConfig();
         FileConfiguration config = getConfig();
@@ -88,6 +86,7 @@ public final class RayTraceAntiXray extends JavaPlugin {
         timer = new Timer("RayTraceAntiXray tick thread", true);
         timer.schedule(new RayTraceTimerTask(this), 0L, Math.max(config.getLong("settings.anti-xray.ms-per-ray-trace-tick"), 1L));
         updateTicks = Math.max(config.getLong("settings.anti-xray.update-ticks"), 1L);
+        debug = config.getBoolean("settings.debug", false);
 
         if (!BukkitUtil.IS_FOLIA) {
             new UpdateBukkitRunnable(this).runTaskTimer(this, 0L, updateTicks);
@@ -359,6 +358,39 @@ public final class RayTraceAntiXray extends JavaPlugin {
         }
 
         return maxZoom;
+    }
+
+    public boolean isDebug(){
+        return debug;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    public void logDebugNagReminder() {
+        if (!isDebug()) {
+            getLogger().log(Level.WARNING, """
+                Duplicate errors will be ignored. Performance and efficacy might be affected if this error persists.
+                Consider enabling debugging to see every error like this.""");
+        }
+    }
+
+    // These methods are for preventing console spam from less than critical errors.
+    public boolean hasNagged(Throwable msg) {
+        return hasNagged(BukkitUtil.stacktraceToString(msg));
+    }
+
+    public boolean hasNagged(String msg) {
+        return nagged.contains(msg);
+    }
+
+    public boolean handleNag(Throwable msg) {
+        return handleNag(BukkitUtil.stacktraceToString(msg));
+    }
+
+    public boolean handleNag(String nag) {
+        return nagged.add(nag) || isDebug();
     }
 
     public static boolean hasController(World world) {

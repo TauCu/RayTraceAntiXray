@@ -16,7 +16,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,7 +28,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.*;
-import net.minecraft.world.level.chunk.PaletteResize;
 import org.bukkit.Bukkit;
 
 import java.lang.reflect.Field;
@@ -41,6 +39,7 @@ import java.util.function.IntSupplier;
 public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockController {
 
     public static final Palette<BlockState> GLOBAL_BLOCKSTATE_PALETTE = new GlobalPalette<>(Block.BLOCK_STATE_REGISTRY);
+    private static final PaletteResize<BlockState> RESIZE_RETURNS_NEGATIVE_ONE = (idx, state) -> -1;
     private static final LevelChunkSection EMPTY_SECTION = null;
     private final RayTraceAntiXray plugin;
     private final ChunkPacketBlockController oldController;
@@ -169,8 +168,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                 try {
                     block = getBlock(id);
                 } catch (Exception e) {
-                    plugin.getLogger().warning("Failed to parse ray-trace-block: " + id);
-                    e.printStackTrace();
+                    plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to parse ray-trace-block: " + id, e);
                 }
 
                 // Don't obfuscate air because air causes unnecessary block updates and causes block updates to fail in the void
@@ -197,8 +195,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                         this.bypassRehideBlocks.add(block);
                     }
                 } catch (Exception e) {
-                    plugin.getLogger().warning("Failed to parse bypass-rehide-block: " + id);
-                    e.printStackTrace();
+                    plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to parse bypass-rehide-block: " + id, e);
                 }
             }
         }
@@ -425,8 +422,6 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         for (int chunkSectionIndex = 0; chunkSectionIndex <= maxChunkSectionIndex; chunkSectionIndex++) {
             if (chunkPacketInfoAntiXray.isWritten(chunkSectionIndex) && chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex) != null) {
                 int[] presetBlockStateBitsTemp;
-                // Stacktraces counter. Only show up to 3 times per chunk section to avoid log flooding.
-                int errorCount = 0;
 
                 if (chunkPacketInfoAntiXray.getPalette(chunkSectionIndex) instanceof GlobalPalette) {
                     if (engineMode == EngineMode.HIDE) {
@@ -447,37 +442,45 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                     // If it's presetBlockStates, use this.presetBlockStatesFull instead
                     BlockState[] presetBlockStatesFull = chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex) == presetBlockStates ? this.presetBlockStatesFull : chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex);
                     presetBlockStateBitsTemp = presetBlockStateBits;
-                    try {
+
+                    Palette<BlockState> palette = chunkPacketInfoAntiXray.getPalette(chunkSectionIndex);
+                    boolean hasMissingPresetStates = false;
+                    int lastFoundPresetState = -1;
                     for (int i = 0; i < presetBlockStateBitsTemp.length; i++) {
-                        // This is thread safe because we only request IDs that are guaranteed to be in the palette and are visible
-                        // For more details see the comments in the readPalette method
-                        presetBlockStateBitsTemp[i] = chunkPacketInfoAntiXray.getPalette(chunkSectionIndex).idFor(presetBlockStatesFull[i], PaletteResize.noResizeExpected());
-                    }
-                    } catch (IllegalArgumentException e) {
-                        
-                        if (errorCount <= 3) {
-                            if (RayTraceAntiXray.isDebugEnabled()) {
-                                this.plugin.getLogger()
-                                        .warning("Failed to get preset block state ID from palette for chunk section "
-                                        + chunkSectionIndex + " in chunk " + chunk.getPos() + " in dimension "
-                                        + level.dimension()
-                                        + ". The chunk section will be skipped for obfuscation. This warning will be shown up to 3 times.");
-                                        e.printStackTrace();
+                        int id;
+                        try {
+                            // if another plugin has modified the palette, it is possible for one or more of the expected preset states to be missing.
+                            id = palette.idFor(presetBlockStatesFull[i], RESIZE_RETURNS_NEGATIVE_ONE);
+                        } catch (Exception e) {
+                            // if this happens, someone is using a custom palette and ignoring the resize handler
+                            if (plugin.handleNag(e)) {
+                                plugin.getLogger().log(java.util.logging.Level.WARNING, """
+                                        Unexpected error thrown while reading palette for preset block states for: state=%s section=%d chunk=%s level=%s"""
+                                        .formatted(presetBlockStatesFull[i], chunkSectionIndex, chunk.getPos(), level.getWorld().getName()), e);
+                                plugin.logDebugNagReminder();
                             }
+                            // skip this chunk as it's likely all palettes will raise the same error
+                            chunkPacketInfoAntiXray.getChunkPacket().setReady(true);
+                            return;
                         }
 
-                        errorCount++;
-                        
-                        if (errorCount >= 4) {
+                        if (id == -1) {
+                            hasMissingPresetStates = true;
+                        } else {
+                            lastFoundPresetState = id;
+                        }
+                        presetBlockStateBitsTemp[i] = id;
+                    }
 
-                            // Reset errorCount to avoid multiple messages for every chunk section
-                            errorCount = 0;
-                            // The palette doesn't contain the preset block states - this can happen when
-                            // another plugin
-                            // (like FartherViewDistance) creates chunk packets with minimal palettes that
-                            // don't include
-                            // the obfuscation blocks. Skip obfuscation for this chunk section.
+                    // replace all missing states with the last found state or skip this section
+                    if (hasMissingPresetStates) {
+                        if (lastFoundPresetState == -1)
                             continue;
+                        for (int i = 0; i < presetBlockStateBitsTemp.length; i++) {
+                            if (presetBlockStateBitsTemp[i] == -1)
+                                presetBlockStateBitsTemp[i] = lastFoundPresetState;
+                            // set to last known good state for the next missing entry
+                            lastFoundPresetState = presetBlockStateBitsTemp[i];
                         }
                     }
                 }
@@ -571,10 +574,9 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         } catch (Exception e) {
             // Catch any unexpected exceptions during chunk obfuscation
             // This can happen with FartherViewDistance or other plugins that create chunks
-            // in unexpected states (corrupted chunks, chunks with no blocks, etc.)
-            if (RayTraceAntiXray.isDebugEnabled()) {
-                this.plugin.getLogger().warning("Failed to obfuscate chunk " + chunk.getPos() + ": " + e.getMessage());
-                e.printStackTrace();
+            if (plugin.handleNag(e)) {
+                plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to obfuscate chunk: chunk=%s level=%s".formatted(chunk.getPos(), level), e);
+                plugin.logDebugNagReminder();
             }
             // Fall through to set the packet as ready anyway
         }
@@ -585,43 +587,35 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
 
         if (blockEntities != null && !blockEntities.isEmpty()) {
             try {
-                final List<?> blockEntitiesData = (List<?>) ChunkPacketBlockControllerAntiXray.BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().getChunkData());
+                List<?> blockEntitiesData = (List<?>) BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().getChunkData());
                 // Skip if blockEntitiesData is null or empty - may happen with FartherViewDistance chunks
                 if (blockEntitiesData != null && !blockEntitiesData.isEmpty()) {
-                    final ChunkPos chunkPos = chunk.getPos();
-                    final int minX = chunkPos.getMinBlockX();
-                    final int minZ = chunkPos.getMinBlockZ();
-                    final MutableBlockPos mutableBlockPos = new MutableBlockPos();
+                    // ensure mutable and replace when filtered
+                    blockEntitiesData = new ArrayList<>(blockEntitiesData);
 
-                    // Create a new list to replace the original, instead of using removeIf() which can 
-                    // corrupt internal state when the list is shared with other data structures.
-                    // This prevents crashes during chunk unload when FartherViewDistance is present.
-                    final List<Object> filteredList = new ArrayList<>();
-                    for (final Object blockEntityData : blockEntitiesData) {
+                    ChunkPos chunkPos = chunk.getPos();
+                    int minX = chunkPos.getMinBlockX();
+                    int minZ = chunkPos.getMinBlockZ();
+                    MutableBlockPos mutableBlockPos = new MutableBlockPos();
+
+                    blockEntitiesData.removeIf(blockEntityData -> {
                         try {
-                            final int packedXZ = ChunkPacketBlockControllerAntiXray.PACKED_X_Z_FIELD.getInt(blockEntityData);
-                            final boolean shouldRemove = blockEntities.contains(mutableBlockPos.set(minX + (packedXZ >>> 4), ChunkPacketBlockControllerAntiXray.Y_FIELD.getInt(blockEntityData), minZ + (packedXZ & 15)));
-                            if (!shouldRemove) {
-                                filteredList.add(blockEntityData);
-                            }
-                        } catch (final IllegalAccessException e) {
-                            // If we can't access the field, keep the entity in the list to be safe
-                            filteredList.add(blockEntityData);
+                            int packedXZ = PACKED_X_Z_FIELD.getInt(blockEntityData);
+                            return blockEntities.contains(mutableBlockPos.set(minX + (packedXZ >>> 4), Y_FIELD.getInt(blockEntityData), minZ + (packedXZ & 15)));
+                        } catch (IllegalAccessException e) {
+                            throw new RuntimeException(e);
                         }
-                    }
-                    // Replace the list contents atomically by setting the field to our new list
-                    ChunkPacketBlockControllerAntiXray.BLOCK_ENTITIES_DATA_FIELD.set(chunkPacketInfoAntiXray.getChunkPacket().getChunkData(), filteredList);
+                    });
+
+                    BLOCK_ENTITIES_DATA_FIELD.set(chunkPacketInfoAntiXray.getChunkPacket().getChunkData(), blockEntitiesData);
                 }
             // TODO: Also remove from chunkPacketInfoAntiXray.getChunkPacket().getExtraPackets(), however, it's unlikely that it contains anything.
-            } catch (final IllegalAccessException e) {
+            } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
-            } catch (final Exception e) {
-                // Silently ignore - this can happen with FartherViewDistance or other plugins
-                // that create chunk packets with different internal state. The block entity
-                // removal is not critical for functionality, only for hiding block entities
-                // that should be obfuscated.
-                if (RayTraceAntiXray.isDebugEnabled()) {
-                    this.plugin.getLogger().warning("Failed to remove obfuscated block entities from chunk packet for chunk " + chunk.getPos() + ": " + e.getMessage());
+            } catch (Exception e) {
+                if (plugin.handleNag(e)) {
+                    plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to remove obfuscated block entities from chunk packet for chunk=%s level=%s".formatted(chunk.getPos(), level), e);
+                    plugin.logDebugNagReminder();
                 }
             }
         }
@@ -1136,16 +1130,11 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         if (chunk == null) {
             return EMPTY_SECTION;
         }
-        try {
-            LevelChunkSection[] sections = chunk.getSections();
-            if (sections == null || sectionIndex < 0 || sectionIndex >= sections.length) {
-                return EMPTY_SECTION;
-            }
-            return sections[sectionIndex];
-        } catch (Exception e) {
-            // Any exception during section access should be treated as empty section
+        LevelChunkSection[] sections = chunk.getSections();
+        if (sections == null || sectionIndex < 0 || sectionIndex >= sections.length) {
             return EMPTY_SECTION;
         }
+        return sections[sectionIndex];
     }
 
     private boolean isTransparent(LevelChunkSection chunkSection, int x, int y, int z) {
