@@ -90,7 +90,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         this.executor = executor;
         WorldConfiguration.Anticheat.AntiXray paperWorldConfig = level.paperConfig().anticheat.antiXray;
         engineMode = paperWorldConfig.engineMode;
-        maxBlockHeight = paperWorldConfig.maxBlockHeight >> 4 << 4;
+        maxBlockHeight = level.getMaxY();
         updateRadius = paperWorldConfig.updateRadius;
         usePermission = paperWorldConfig.usePermission;
         this.rayTraceThirdPerson = rayTraceThirdPerson;
