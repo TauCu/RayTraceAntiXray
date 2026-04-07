@@ -270,8 +270,8 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         }
 
         LevelChunk chunk = chunkPacketInfo.getChunk();
-        int x = chunk.getPos().x;
-        int z = chunk.getPos().z;
+        int x = chunk.getPos().x();
+        int z = chunk.getPos().z();
 
         if (!Bukkit.isPrimaryThread()) {
             Bukkit.getRegionScheduler().execute(

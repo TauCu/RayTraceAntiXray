@@ -79,7 +79,7 @@ public final class RayTraceCallable implements Callable<Void> {
                 int chunkZ = z >> 4;
 
                 if (this.chunkX != chunkX || this.chunkZ != chunkZ) {
-                    mutableLongWrapper.setValue(ChunkPos.asLong(chunkX, chunkZ));
+                    mutableLongWrapper.setValue(ChunkPos.pack(chunkX, chunkZ));
                     ChunkBlocks chunkBlocks = chunks.get(mutableLongWrapper);
 
                     if (chunkBlocks == null) {
@@ -137,7 +137,7 @@ public final class RayTraceCallable implements Callable<Void> {
                     this.chunkX = chunkX;
                     this.sectionY = sectionY;
                     this.chunkZ = chunkZ;
-                    mutableLongWrapper.setValue(ChunkPos.asLong(chunkX, chunkZ));
+                    mutableLongWrapper.setValue(ChunkPos.pack(chunkX, chunkZ));
                     ChunkBlocks chunkBlocks = chunks.get(mutableLongWrapper);
 
                     if (chunkBlocks == null) {
@@ -288,13 +288,13 @@ public final class RayTraceCallable implements Callable<Void> {
             }
 
             ChunkPos chunkPos = chunk.getPos();
-            int chunkX = chunkPos.x;
+            int chunkX = chunkPos.x();
 
             if (chunkX < chunkXMin || chunkX > chunkXMax) {
                 continue;
             }
 
-            int chunkZ = chunkPos.z;
+            int chunkZ = chunkPos.z();
 
             if (chunkZ < chunkZMin || chunkZ > chunkZMax) {
                 continue;

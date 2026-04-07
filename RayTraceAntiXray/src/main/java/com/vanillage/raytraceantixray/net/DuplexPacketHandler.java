@@ -127,7 +127,7 @@ public class DuplexPacketHandler extends DuplexHandler {
             // World changes are already handled above.
             // Technically removing chunks isn't necessary since we're using a weak reference to the chunk.
             plugin.getPlayerData().get(player.getUniqueId())
-                    .getChunks().remove(new LongWrapper(packet.pos().toLong()));
+                    .getChunks().remove(new LongWrapper(packet.pos().longKey()));
         } else if (msg instanceof ClientboundRespawnPacket) {
             // As with world changes, chunk unload packets aren't sent on respawn.
             // All required chunks are (re)sent afterwards.
