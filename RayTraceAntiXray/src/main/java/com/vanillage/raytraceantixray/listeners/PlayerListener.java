@@ -4,6 +4,7 @@ import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.PlayerData;
 import com.vanillage.raytraceantixray.tasks.UpdateBukkitRunnable;
 import com.vanillage.raytraceantixray.util.BukkitUtil;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,11 +27,15 @@ public final class PlayerListener implements Listener {
         Player player = event.getPlayer();
 
         try {
-            if (plugin.tryCreatePlayerDataFor(player) == null)
+            PlayerData playerData = plugin.tryCreatePlayerDataFor(player);
+            if (playerData == null)
                 return;
 
             if (BukkitUtil.IS_FOLIA) {
-                event.getPlayer().getScheduler().runAtFixedRate(plugin, new UpdateBukkitRunnable(plugin, event.getPlayer()), null, 1L, plugin.getUpdateTicks());
+                ScheduledTask task = player.getScheduler().runAtFixedRate(plugin, new UpdateBukkitRunnable(plugin, player), null, 1L, plugin.getUpdateTicks());
+                if (task != null) {
+                    playerData.setUpdateTask(task);
+                }
             }
         } catch (Throwable t) {
             player.kick(Component.text("RayTraceAntiXray encountered an error for your connection, please contact server administrators: " + t.getMessage()));
@@ -46,7 +51,17 @@ public final class PlayerListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         PlayerData data = plugin.getPlayerData().get(event.getPlayer().getUniqueId());
         if (data != null) {
-            data.getPacketHandler().detach();
+            ScheduledTask task = data.getUpdateTask();
+            if (task != null) {
+                try {
+                    task.cancel();
+                } catch (Throwable ignored) {
+                }
+                data.setUpdateTask(null);
+            }
+            if (data.getPacketHandler() != null) {
+                data.getPacketHandler().detach();
+            }
             plugin.getPlayerData().remove(event.getPlayer().getUniqueId(), data);
         }
     }

@@ -46,7 +46,7 @@ public final class RayTraceTimerTask extends TimerTask {
                 }
             }
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Thread.interrupted();
         } catch (RejectedExecutionException e) {
 
         } catch (Throwable t) {

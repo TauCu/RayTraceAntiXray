@@ -1,7 +1,7 @@
 name: RayTraceAntiXray
 main: com.vanillage.raytraceantixray.RayTraceAntiXray
-version: 1.17.6
-api-version: 1.21.11
+version: 1.17.8
+api-version: 1.21
 # Authors and contributors of the plugin
 authors:
   - stonar96

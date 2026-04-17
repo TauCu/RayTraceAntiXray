@@ -217,17 +217,25 @@ public final class RayTraceAntiXray extends JavaPlugin {
 
     public void reloadChunks(Iterable<Player> players) {
         for (Player bp : players) {
-            try {
-                if (tryCreatePlayerDataFor(bp) == null)
-                    continue;
-
-                ServerPlayer sp = ((CraftPlayer) bp).getHandle();
-                var playerChunkManager = sp.level().moonrise$getPlayerChunkLoader();
-                playerChunkManager.removePlayer(sp);
-                playerChunkManager.addPlayer(sp);
-            } catch (Exception e) {
-                getLogger().log(Level.WARNING, "Failed to reloadChunks for: " + bp, e);
+            if (BukkitUtil.IS_FOLIA) {
+                bp.getScheduler().run(this, task -> doReloadChunks(bp), null);
+            } else {
+                doReloadChunks(bp);
             }
+        }
+    }
+
+    private void doReloadChunks(Player bp) {
+        try {
+            if (tryCreatePlayerDataFor(bp) == null)
+                return;
+
+            ServerPlayer sp = ((CraftPlayer) bp).getHandle();
+            var playerChunkManager = sp.level().moonrise$getPlayerChunkLoader();
+            playerChunkManager.removePlayer(sp);
+            playerChunkManager.addPlayer(sp);
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Failed to reloadChunks for: " + bp, e);
         }
     }
 

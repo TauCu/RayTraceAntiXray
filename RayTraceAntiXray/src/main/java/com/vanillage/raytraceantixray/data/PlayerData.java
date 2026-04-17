@@ -1,6 +1,7 @@
 package com.vanillage.raytraceantixray.data;
 
 import com.vanillage.raytraceantixray.net.DuplexPacketHandler;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.util.Queue;
 import java.util.concurrent.Callable;
@@ -12,9 +13,10 @@ public final class PlayerData implements Callable<Object> {
 
     private final ConcurrentMap<LongWrapper, ChunkBlocks> chunks = new ConcurrentHashMap<>();
     private final Queue<Result> results = new ConcurrentLinkedQueue<>();
-    private Callable<?> callable;
-    private DuplexPacketHandler packetHandler;
+    private volatile Callable<?> callable;
+    private volatile DuplexPacketHandler packetHandler;
     private volatile VectorialLocation[] locations;
+    private volatile ScheduledTask updateTask;
 
     public PlayerData(VectorialLocation[] locations) {
         this.locations = locations;
@@ -52,9 +54,21 @@ public final class PlayerData implements Callable<Object> {
         this.packetHandler = packetHandler;
     }
 
+    public ScheduledTask getUpdateTask() {
+        return updateTask;
+    }
+
+    public void setUpdateTask(ScheduledTask updateTask) {
+        this.updateTask = updateTask;
+    }
+
     @Override
     public Object call() throws Exception {
-        return callable.call();
+        Callable<?> c = callable;
+        if (c == null) {
+            return null;
+        }
+        return c.call();
     }
 
 }

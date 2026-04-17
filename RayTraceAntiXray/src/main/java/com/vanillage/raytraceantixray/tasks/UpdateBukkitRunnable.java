@@ -2,6 +2,7 @@ package com.vanillage.raytraceantixray.tasks;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.*;
+import com.vanillage.raytraceantixray.util.BukkitUtil;
 import io.netty.channel.Channel;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.minecraft.core.BlockPos;
@@ -13,6 +14,7 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.World.Environment;
@@ -89,11 +91,17 @@ public final class UpdateBukkitRunnable extends BukkitRunnable implements Consum
             }
 
             BlockPos block = result.getBlock();
+            int chunkX = block.getX() >> 4;
+            int chunkZ = block.getZ() >> 4;
+
+            if (BukkitUtil.IS_FOLIA && !Bukkit.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+                continue;
+            }
 
             // Similar to the null check above, this check isn't actually necessary.
             // However, we don't need to send an update packet because the client will unload the chunk.
             // Thus we can avoid loading the chunk just for the update packet.
-            if (!world.isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)) {
+            if (!world.isChunkLoaded(chunkX, chunkZ)) {
                 continue;
             }
 

@@ -84,7 +84,7 @@ public final class WorldListener implements Listener {
                 field.setAccessible(true);
                 field.set(((CraftWorld) w).getHandle(), oldController);
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-                e.printStackTrace();
+                plugin.getLogger().log(java.util.logging.Level.SEVERE, "Failed to restore chunkPacketBlockController for world: " + w.getName(), e);
             }
         }
     }

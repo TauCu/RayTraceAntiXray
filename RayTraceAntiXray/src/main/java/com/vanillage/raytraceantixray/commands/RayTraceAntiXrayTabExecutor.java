@@ -127,7 +127,7 @@ public final class RayTraceAntiXrayTabExecutor implements TabExecutor {
                     return true;
                 }
             } else if (args[0].toLowerCase(Locale.ROOT).equals("reload")) {
-                if (sender.hasPermission("raytraceantixray.raytraceantixray.command.reload")) {
+                if (sender.hasPermission("raytraceantixray.command.reload")) {
                     Stopwatch w = Stopwatch.createStarted();
                     plugin.reload();
                     sender.sendMessage(text("Reloaded in " + w.elapsed(TimeUnit.MILLISECONDS) + "ms", GOLD));
@@ -136,7 +136,7 @@ public final class RayTraceAntiXrayTabExecutor implements TabExecutor {
                 }
                 return true;
             } else if (args[0].toLowerCase(Locale.ROOT).equals("reloadchunks")) {
-                if (sender.hasPermission("raytraceantixray.command.raytraceantixray.reloadchunks")) {
+                if (sender.hasPermission("raytraceantixray.command.reloadchunks")) {
                     HashSet<Player> players = new HashSet<>();
                     if (args.length > 1) {
                         if (args[1].equalsIgnoreCase("*")) {

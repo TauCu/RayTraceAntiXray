@@ -38,15 +38,80 @@ settings:
   anti-xray:
     update-ticks: 2
     ms-per-ray-trace-tick: 50
-    ray-trace-threads: 2
+    # 6 потоков: ~500 callable/тик ÷ 6 = ~83 игрока на поток.
+    # Если сервер слабый — уменьши до 4. Если 8+ ядер и 500+ онлайн — можно поднять до 8.
+    ray-trace-threads: 6
+
 world-settings:
+  # ─── Базовые настройки (наследуются всеми мирами) ─────────────────────────
+  # rehide-blocks: false — блок скрыт до первого взгляда, после остаётся видимым.
+  # Это экономит CPU: нет повторных вычислений для уже раскрытых блоков.
   default:
+    anti-xray:
+      ray-trace: false
+      ray-trace-third-person: false
+      ray-trace-distance: 80.0
+      max-ray-trace-block-count-per-chunk: 128
+      rehide-blocks: false
+      rehide-distance: 80.0
+      bypass-rehide-blocks: []
+      ray-trace-blocks: []
+
+  # ─── Overworld ────────────────────────────────────────────────────────────
+  # Anti-Xray включён. Защищает все ценные руды от Y=-64 до Y=320.
+  # Требует: Paper Anti-Xray engine-mode: 1 для мира "world".
+  world:
     anti-xray:
       ray-trace: true
       ray-trace-third-person: false
-      ray-trace-distance: 120.0
-      max-ray-trace-block-count-per-chunk: 100
+      ray-trace-distance: 80.0
+      max-ray-trace-block-count-per-chunk: 128
       rehide-blocks: false
-      rehide-distance: .inf
+      rehide-distance: 80.0
       bypass-rehide-blocks: []
-      ray-trace-blocks: []
+      ray-trace-blocks:
+        - coal_ore
+        - deepslate_coal_ore
+        - copper_ore
+        - deepslate_copper_ore
+        - iron_ore
+        - deepslate_iron_ore
+        - gold_ore
+        - deepslate_gold_ore
+        - lapis_ore
+        - deepslate_lapis_ore
+        - redstone_ore
+        - deepslate_redstone_ore
+        - diamond_ore
+        - deepslate_diamond_ore
+        - emerald_ore
+        - deepslate_emerald_ore
+
+  # ─── Nether ───────────────────────────────────────────────────────────────
+  # Anti-Xray включён. Защищает Ancient Debris и руды Незера.
+  # Требует: Paper Anti-Xray engine-mode: 1 для мира "world_nether".
+  world_nether:
+    anti-xray:
+      ray-trace: true
+      ray-trace-third-person: false
+      ray-trace-distance: 80.0
+      max-ray-trace-block-count-per-chunk: 128
+      rehide-blocks: false
+      rehide-distance: 80.0
+      bypass-rehide-blocks: []
+      ray-trace-blocks:
+        - ancient_debris
+        - nether_gold_ore
+        - nether_quartz_ore
+
+  # ─── The End ──────────────────────────────────────────────────────────────
+  # Anti-Xray отключён. В Энде нет скрываемых ресурсов.
+  world_the_end:
+    anti-xray:
+      ray-trace: false
+
+  # ─── Hub ──────────────────────────────────────────────────────────────────
+  # Anti-Xray отключён. Лобби не требует защиты руд.
+  hub:
+    anti-xray:
+      ray-trace: false
