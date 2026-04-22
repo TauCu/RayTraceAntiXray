@@ -223,16 +223,4 @@ public final class BlockOcclusionCulling {
         BlockIterator getBlockIterator(int x, int y, int z, double startX, double startY, double startZ, double directionX, double directionY, double directionZ, double distance);
     }
 
-    @FunctionalInterface
-    public interface BlockOcclusionGetter {
-        boolean isOccluding(int x, int y, int z);
-
-        default boolean isOccludingRay(int x, int y, int z) {
-            return isOccluding(x, y, z);
-        }
-
-        default boolean isOccludingNearby(int x, int y, int z) {
-            return isOccluding(x, y, z);
-        }
-    }
 }

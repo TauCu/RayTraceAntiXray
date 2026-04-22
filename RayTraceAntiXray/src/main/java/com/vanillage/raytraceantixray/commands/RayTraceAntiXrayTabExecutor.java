@@ -94,9 +94,9 @@ public final class RayTraceAntiXrayTabExecutor implements TabExecutor {
                                 .appendNewline()
                                 .append(text("Consider using spark profiler for more information: "))
                                 .appendNewline()
-                                .append(text("  /spark profiler start --interval 1 --thread .*RayTraceAntiXray.* --regex", GOLD)
+                                .append(text("  /spark profiler start --interval 1 --thread (?i)^(?:server.thread|netty|raytraceantixray).* --regex", GOLD)
                                         .hoverEvent(HoverEvent.showText(text("click to suggest", GOLD)))
-                                        .clickEvent(ClickEvent.suggestCommand("/spark profiler start --interval 1 --thread .*RayTraceAntiXray.* --regex")))
+                                        .clickEvent(ClickEvent.suggestCommand("/spark profiler start --interval 1 --thread (?i)^(?:server.thread|netty|raytraceantixray).* --regex")))
                                 .color(YELLOW));
                         return true;
                     } else if (args[1].toLowerCase(Locale.ROOT).equals("on")) {

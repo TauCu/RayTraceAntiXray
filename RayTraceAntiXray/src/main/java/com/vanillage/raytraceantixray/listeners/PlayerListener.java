@@ -2,8 +2,6 @@ package com.vanillage.raytraceantixray.listeners;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.PlayerData;
-import com.vanillage.raytraceantixray.tasks.UpdateBukkitRunnable;
-import com.vanillage.raytraceantixray.util.BukkitUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,12 +24,11 @@ public final class PlayerListener implements Listener {
         Player player = event.getPlayer();
 
         try {
-            if (plugin.tryCreatePlayerDataFor(player) == null)
+            PlayerData data = plugin.tryCreatePlayerDataFor(player);
+            if (data == null)
                 return;
 
-            if (BukkitUtil.IS_FOLIA) {
-                event.getPlayer().getScheduler().runAtFixedRate(plugin, new UpdateBukkitRunnable(plugin, event.getPlayer()), null, 1L, plugin.getUpdateTicks());
-            }
+            data.startUpdateTask();
         } catch (Throwable t) {
             player.kick(Component.text("RayTraceAntiXray encountered an error for your connection, please contact server administrators: " + t.getMessage()));
             if (t instanceof Exception) {

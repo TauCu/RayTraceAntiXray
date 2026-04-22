@@ -2,6 +2,7 @@ package com.vanillage.raytraceantixray.listeners;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.antixray.ChunkPacketBlockControllerAntiXray;
+import com.vanillage.raytraceantixray.util.BukkitUtil;
 import io.papermc.paper.antixray.ChunkPacketBlockController;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -84,7 +85,7 @@ public final class WorldListener implements Listener {
                 field.setAccessible(true);
                 field.set(((CraftWorld) w).getHandle(), oldController);
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-                e.printStackTrace();
+                BukkitUtil.sneakyThrow(e);
             }
         }
     }

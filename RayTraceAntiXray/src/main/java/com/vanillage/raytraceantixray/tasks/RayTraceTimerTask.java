@@ -32,7 +32,7 @@ public final class RayTraceTimerTask extends TimerTask {
                 lastNotify = Instant.MIN;
             }
 
-            plugin.getExecutorService().invokeAll(plugin.getPlayerData().values().stream().map(pd -> pd.getCallable()).toList());
+            plugin.getExecutorService().invokeAll(plugin.getPlayerData().values().stream().map(pd -> pd.getContext().getCallable()).toList());
 
             if (watch.isRunning()) {
                 watch.stop();

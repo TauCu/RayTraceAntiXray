@@ -1,60 +1,72 @@
 package com.vanillage.raytraceantixray.data;
 
+import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.net.DuplexPacketHandler;
+import com.vanillage.raytraceantixray.tasks.UpdateBukkitRunnable;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
 
-import java.util.Queue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
+public final class PlayerData {
 
-public final class PlayerData implements Callable<Object> {
+    private final RayTraceAntiXray plugin;
+    private final Player player;
+    private final DuplexPacketHandler packetHandler;
+    private final UpdateBukkitRunnable updateRunnable;
+    private ScheduledTask updateTask;
+    private volatile WorldContext context;
 
-    private final ConcurrentMap<LongWrapper, ChunkBlocks> chunks = new ConcurrentHashMap<>();
-    private final Queue<Result> results = new ConcurrentLinkedQueue<>();
-    private Callable<?> callable;
-    private DuplexPacketHandler packetHandler;
-    private volatile VectorialLocation[] locations;
-
-    public PlayerData(VectorialLocation[] locations) {
-        this.locations = locations;
+    public PlayerData(RayTraceAntiXray plugin, Player player) {
+        this.plugin = plugin;
+        this.player = player;
+        this.packetHandler = new DuplexPacketHandler(plugin, this);
+        this.updateRunnable = new UpdateBukkitRunnable(plugin, this);
+        updateWorldContext(player.getWorld());
     }
 
-    public VectorialLocation[] getLocations() {
-        return locations;
+    public Player getPlayer() {
+        return player;
     }
 
-    public void setLocations(VectorialLocation[] locations) {
-        this.locations = locations;
+    public WorldContext getContext() {
+        return context;
     }
 
-    public ConcurrentMap<LongWrapper, ChunkBlocks> getChunks() {
-        return chunks;
-    }
-
-    public Queue<Result> getResults() {
-        return results;
-    }
-
-    public Callable<?> getCallable() {
-        return callable;
-    }
-
-    public void setCallable(Callable<?> callable) {
-        this.callable = callable;
+    public void setContext(WorldContext ctx) {
+        this.context = ctx;
     }
 
     public DuplexPacketHandler getPacketHandler() {
         return packetHandler;
     }
 
-    public void setPacketHandler(DuplexPacketHandler packetHandler) {
-        this.packetHandler = packetHandler;
+    public UpdateBukkitRunnable getUpdateRunnable() {
+        return updateRunnable;
     }
 
-    @Override
-    public Object call() throws Exception {
-        return callable.call();
+    public ScheduledTask getUpdateTask() {
+        return updateTask;
+    }
+
+    public synchronized void startUpdateTask() {
+        if (updateTask != null && !updateTask.isCancelled())
+            return;
+
+        updateTask = player.getScheduler().runAtFixedRate(plugin, updateRunnable, null, plugin.getUpdateTicks(), plugin.getUpdateTicks());
+    }
+
+    public synchronized void stopUpdateTask() {
+        if (updateTask == null || updateTask.isCancelled())
+            return;
+
+        updateTask.cancel();
+        updateTask = null;
+    }
+
+    public WorldContext updateWorldContext(World world) {
+        var newCtx = new WorldContext(plugin, world);
+        this.context = newCtx;
+        return newCtx;
     }
 
 }
