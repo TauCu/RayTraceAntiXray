@@ -110,11 +110,10 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
             return false;
 
         ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-        if (connection == null || connection.processedDisconnect)
+        if (connection == null || !connection.connection.isConnected())
             return false;
+
         Channel channel = connection.connection.channel;
-        if (channel == null || !channel.isOpen())
-            return false;
 
         // wrap whole operation in event loop, otherwise Channel#write will do it for each packet
         channel.eventLoop().execute(() -> {
