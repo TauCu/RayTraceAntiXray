@@ -25,6 +25,7 @@ import org.bukkit.util.Vector;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 public final class UpdateBukkitRunnable extends BukkitRunnable implements Consumer<ScheduledTask> {
     private final RayTraceAntiXray plugin;
@@ -120,32 +121,32 @@ public final class UpdateBukkitRunnable extends BukkitRunnable implements Consum
             // We bypass the packet queue since our calculations are based on the packet state (not the server state) as seen by the packet listener.
             // As described above, the packet queue could for example already contain a chunk unload packet.
             // Thus we send our packet immediately before that.
-            sendPacketImmediately(player, new ClientboundBlockUpdatePacket(block, blockState));
+            sendPacket(player, new ClientboundBlockUpdatePacket(block, blockState), false);
 
             if (blockEntity != null) {
                 Packet<ClientGamePacketListener> packet = blockEntity.getUpdatePacket();
 
                 if (packet != null) {
-                    sendPacketImmediately(player, packet);
+                    sendPacket(player, packet, false);
                 }
             }
         }
     }
 
-    private static boolean sendPacketImmediately(Player player, Object packet) {
+    private static boolean sendPacket(Player player, Packet<?> packet, boolean flush) {
         ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-
-        if (connection == null || connection.processedDisconnect) {
+        if (connection == null || !connection.connection.isConnected()) {
+            RayTraceAntiXray.getInstance().getLogger().log(Level.SEVERE, "Player: %s Connection null: %s Connection connected: %s".formatted(player.getName(), connection == null, connection.connection.isConnected()));
             return false;
         }
 
         Channel channel = connection.connection.channel;
 
-        if (channel == null || !channel.isOpen()) {
-            return false;
-        }
-
-        channel.writeAndFlush(packet);
+        //for (Packet<?> packet : packets) {
+            channel.write(packet);
+        //}
+        //if (flush)
+            channel.flush();
         return true;
     }
 }
