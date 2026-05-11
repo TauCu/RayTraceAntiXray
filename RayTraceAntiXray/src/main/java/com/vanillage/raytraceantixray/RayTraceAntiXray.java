@@ -187,9 +187,19 @@ public final class RayTraceAntiXray extends JavaPlugin {
     }
 
     public void reload() {
-        onDisable();
-        onEnable();
-        getLogger().info(getPluginMeta().getName() + " reloaded");
+        if (BukkitUtil.IS_FOLIA) {
+            Thread t = new Thread(() -> {
+                onDisable();
+                onEnable();
+                getLogger().info(getPluginMeta().getName() + " reloaded");
+            }, "RayTraceAntiXray reload thread");
+            t.setDaemon(false);
+            t.start();
+        } else {
+            onDisable();
+            onEnable();
+            getLogger().info(getPluginMeta().getName() + " reloaded");
+        }
     }
 
     public void reloadChunks(Iterable<Player> players) {
@@ -197,13 +207,20 @@ public final class RayTraceAntiXray extends JavaPlugin {
             PlayerData data = getPlayerData().get(player.getUniqueId());
             if (data == null)
                 continue; // probably npc
-            try {
-                // clear existing xray context
-                data.updateWorldContext(player.getWorld());
-                // resend all chunks
-                reloadChunks0(player);
-            } catch (Exception e) {
-                getLogger().log(Level.WARNING, "Failed to reloadChunks for: " + player, e);
+            Runnable task = () -> {
+                try {
+                    // clear existing xray context
+                    data.updateWorldContext(player.getWorld());
+                    // resend all chunks
+                    reloadChunks0(player);
+                } catch (Exception e) {
+                    getLogger().log(Level.WARNING, "Failed to reloadChunks for: " + player, e);
+                }
+            };
+            if (BukkitUtil.IS_FOLIA && !Bukkit.isOwnedByCurrentRegion(player)) {
+                player.getScheduler().run(this, t -> task.run(), null);
+            } else {
+                task.run();
             }
         }
     }
@@ -279,9 +296,9 @@ public final class RayTraceAntiXray extends JavaPlugin {
         Location loc = player.getEyeLocation();
         playerData.getContext().setLocations(RayTraceAntiXray.getLocations(player, playerData.getContext().getWorld(), new VectorialLocation(loc)));
 
-        // add to map
+        // add to map; return null if another thread already created data (idempotent guard)
         if (getPlayerData().putIfAbsent(player.getUniqueId(), playerData) != null)
-            throw new IllegalStateException("PlayerData already exists for " + player);
+            return null;
 
         try {
             // attach network handler after playerdata is added to the map
@@ -312,6 +329,12 @@ public final class RayTraceAntiXray extends JavaPlugin {
     }
 
     private static double getMaxZoom(Entity entity, VectorialLocation location, double maxZoom) {
+        if (BukkitUtil.IS_FOLIA) {
+            Vector pos = location.position();
+            if (!Bukkit.isOwnedByCurrentRegion(entity.getWorld(), pos.getBlockX() >> 4, pos.getBlockZ() >> 4)) {
+                return maxZoom;
+            }
+        }
         Vector vector = location.position();
         Vec3 position = new Vec3(vector.getX(), vector.getY(), vector.getZ());
         double positionX = position.x;

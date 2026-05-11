@@ -13,7 +13,7 @@ public class DuplexHandler extends ChannelDuplexHandler {
 
     private final String name;
 
-    private Channel channel;
+    private volatile Channel channel;
 
     public DuplexHandler(String name) {
         this.name = Objects.requireNonNull(name);

@@ -15,12 +15,40 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class WorldListener implements Listener {
+    /**
+     * VarHandle for {@code Level.chunkPacketBlockController}.
+     *
+     * <p>Obtained once at class-load time via {@link MethodHandles#privateLookupIn} so that we can
+     * use {@link VarHandle#setRelease} instead of plain {@link Field#set}.  {@code setRelease}
+     * provides a <em>release</em> memory fence on the write: any thread that subsequently reads the
+     * field through an <em>acquire</em> fence (or through a {@code volatile} / {@code synchronized}
+     * construct that itself implies acquire) is guaranteed to see the fully-constructed controller
+     * object we published here.  {@code setVolatile} would additionally fence earlier stores too,
+     * but that is not needed for our single-writer / ordered-publish pattern, so the lighter
+     * {@code setRelease} is preferred.
+     */
+    private static final VarHandle CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE;
+
+    static {
+        try {
+            Field field = Level.class.getDeclaredField("chunkPacketBlockController");
+            field.setAccessible(true);
+            CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE =
+                    MethodHandles.privateLookupIn(Level.class, MethodHandles.lookup())
+                            .unreflectVarHandle(field);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
     private final RayTraceAntiXray plugin;
 
     public WorldListener(RayTraceAntiXray plugin) {
@@ -54,7 +82,7 @@ public final class WorldListener implements Listener {
             ServerLevel serverLevel = ((CraftWorld) world).getHandle();
             ChunkPacketBlockControllerAntiXray controller = new ChunkPacketBlockControllerAntiXray(
                     plugin,
-                    ((CraftWorld) world).getHandle().chunkPacketBlockController,
+                    (ChunkPacketBlockController) CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.getAcquire(serverLevel),
                     rayTraceThirdPerson,
                     rayTraceDistance,
                     rehideBlocks,
@@ -66,25 +94,25 @@ public final class WorldListener implements Listener {
                     MinecraftServer.getServer().executor
             );
 
-            try {
-                Field field = Level.class.getDeclaredField("chunkPacketBlockController");
-                field.setAccessible(true);
-                field.set(serverLevel, controller);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+            // setRelease: all writes performed before this point are visible to any thread that
+            // subsequently reads this field through an acquire fence.
+            CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.setRelease(serverLevel, controller);
         }
     }
 
     public static void handleUnload(RayTraceAntiXray plugin, World w) {
-        if (((CraftWorld) w).getHandle().chunkPacketBlockController instanceof ChunkPacketBlockControllerAntiXray) {
-            ChunkPacketBlockController oldController = ((ChunkPacketBlockControllerAntiXray) ((CraftWorld) w).getHandle().chunkPacketBlockController).getOldController();
+        ServerLevel serverLevel = ((CraftWorld) w).getHandle();
+        ChunkPacketBlockController current =
+                (ChunkPacketBlockController) CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.getAcquire(serverLevel);
+
+        if (current instanceof ChunkPacketBlockControllerAntiXray antiXray) {
+            ChunkPacketBlockController oldController = antiXray.getOldController();
 
             try {
-                Field field = Level.class.getDeclaredField("chunkPacketBlockController");
-                field.setAccessible(true);
-                field.set(((CraftWorld) w).getHandle(), oldController);
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                // setRelease: restoring the original controller with a release fence so that any
+                // thread observing the restored value also sees the original controller's state.
+                CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.setRelease(serverLevel, oldController);
+            } catch (Exception e) {
                 BukkitUtil.sneakyThrow(e);
             }
         }
