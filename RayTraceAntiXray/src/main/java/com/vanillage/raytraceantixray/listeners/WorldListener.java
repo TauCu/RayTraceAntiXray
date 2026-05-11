@@ -24,23 +24,25 @@ import java.util.stream.Collectors;
 
 public final class WorldListener implements Listener {
     /**
-     * VarHandle for {@code Level.chunkPacketBlockController}.
-     *
-     * <p>Obtained once at class-load time via {@link MethodHandles#privateLookupIn} so that we can
-     * use {@link VarHandle#setRelease} instead of plain {@link Field#set}.  {@code setRelease}
-     * provides a <em>release</em> memory fence on the write: any thread that subsequently reads the
-     * field through an <em>acquire</em> fence (or through a {@code volatile} / {@code synchronized}
-     * construct that itself implies acquire) is guaranteed to see the fully-constructed controller
-     * object we published here.  {@code setVolatile} would additionally fence earlier stores too,
-     * but that is not needed for our single-writer / ordered-publish pattern, so the lighter
-     * {@code setRelease} is preferred.
+     * VarHandle for {@code Level.chunkPacketBlockController}, used for {@link VarHandle#getAcquire}
+     * reads. A VarHandle obtained for a {@code final} field only supports read access modes, so
+     * writes go through {@link #CHUNK_PACKET_BLOCK_CONTROLLER_FIELD} below.
      */
     private static final VarHandle CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE;
+    /**
+     * Reflective handle on {@code Level.chunkPacketBlockController} used for publishing writes.
+     * Paired with a preceding {@link VarHandle#releaseFence()} so that any thread observing the
+     * published reference through {@link VarHandle#getAcquire} also observes the fully-constructed
+     * controller's stores — the same release/acquire happens-before relationship that
+     * {@code setRelease} would have provided, which is unavailable for a {@code final} field.
+     */
+    private static final Field CHUNK_PACKET_BLOCK_CONTROLLER_FIELD;
 
     static {
         try {
             Field field = Level.class.getDeclaredField("chunkPacketBlockController");
             field.setAccessible(true);
+            CHUNK_PACKET_BLOCK_CONTROLLER_FIELD = field;
             CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE =
                     MethodHandles.privateLookupIn(Level.class, MethodHandles.lookup())
                             .unreflectVarHandle(field);
@@ -94,9 +96,15 @@ public final class WorldListener implements Listener {
                     MinecraftServer.getServer().executor
             );
 
-            // setRelease: all writes performed before this point are visible to any thread that
-            // subsequently reads this field through an acquire fence.
-            CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.setRelease(serverLevel, controller);
+            try {
+                // Release fence + plain store: pairs with the reader's getAcquire so the
+                // controller's constructor stores are visible alongside the published reference.
+                // setRelease is unavailable here because the target field is declared final.
+                VarHandle.releaseFence();
+                CHUNK_PACKET_BLOCK_CONTROLLER_FIELD.set(serverLevel, controller);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -109,9 +117,10 @@ public final class WorldListener implements Listener {
             ChunkPacketBlockController oldController = antiXray.getOldController();
 
             try {
-                // setRelease: restoring the original controller with a release fence so that any
-                // thread observing the restored value also sees the original controller's state.
-                CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.setRelease(serverLevel, oldController);
+                // Release fence + plain store: same pattern as handleLoad. setRelease is
+                // unavailable because the target field is declared final.
+                VarHandle.releaseFence();
+                CHUNK_PACKET_BLOCK_CONTROLLER_FIELD.set(serverLevel, oldController);
             } catch (Exception e) {
                 BukkitUtil.sneakyThrow(e);
             }
