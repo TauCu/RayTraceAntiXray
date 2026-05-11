@@ -2,6 +2,7 @@ package com.vanillage.raytraceantixray.commands;
 
 import com.google.common.base.Stopwatch;
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
+import com.vanillage.raytraceantixray.util.BukkitUtil;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
@@ -128,9 +129,16 @@ public final class RayTraceAntiXrayTabExecutor implements TabExecutor {
                 }
             } else if (args[0].toLowerCase(Locale.ROOT).equals("reload")) {
                 if (sender.hasPermission("raytraceantixray.raytraceantixray.command.reload")) {
-                    Stopwatch w = Stopwatch.createStarted();
-                    plugin.reload();
-                    sender.sendMessage(text("Reloaded in " + w.elapsed(TimeUnit.MILLISECONDS) + "ms", GOLD));
+                    Runnable reload = () -> {
+                        Stopwatch w = Stopwatch.createStarted();
+                        plugin.reload();
+                        sender.sendMessage(text("Reloaded in " + w.elapsed(TimeUnit.MILLISECONDS) + "ms", GOLD));
+                    };
+                    if (BukkitUtil.IS_FOLIA) {
+                        Bukkit.getGlobalRegionScheduler().execute(plugin, reload);
+                    } else {
+                        reload.run();
+                    }
                 } else {
                     sender.sendMessage(text("You don't have permission to reload this plugin.", RED));
                 }
