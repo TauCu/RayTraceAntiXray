@@ -37,7 +37,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntSupplier;
 
-import static com.vanillage.raytraceantixray.util.BlockStateUtil.*;
+import static com.vanillage.raytraceantixray.util.BlockStateUtil.BLOCKSTATE_MAP;
+import static com.vanillage.raytraceantixray.util.BlockStateUtil.BLOCKSTATE_PALETTE;
 
 public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockController {
 
@@ -70,7 +71,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
     public final boolean[] solidGlobal = new boolean[BLOCKSTATE_MAP.size()];
     public final Set<Block> bypassRehideBlocks;
     private final boolean[] obfuscateGlobal = new boolean[BLOCKSTATE_MAP.size()];
-    private final boolean[] traceGlobal;
+    public final boolean[] traceGlobal;
     private final boolean[] blockEntityGlobal = new boolean[BLOCKSTATE_MAP.size()];
     private final LevelChunkSection[] emptyNearbyChunkSections = {EMPTY_SECTION, EMPTY_SECTION, EMPTY_SECTION, EMPTY_SECTION};
     private final int maxBlockHeightUpdatePosition;
@@ -309,7 +310,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
             boolean[] obfuscate,
             boolean[] trace,
             boolean[] blockEntity,
-            // These boolean arrays represent chunk layers, true means don't obfuscate, false means obfuscate
+            // These represent chunk sections, containing various cached flags for obfuscation
             boolean[][] current,
             boolean[][] next,
             boolean[][] next_next,

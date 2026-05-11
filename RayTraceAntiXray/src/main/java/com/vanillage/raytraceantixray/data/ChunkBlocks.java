@@ -1,26 +1,27 @@
 package com.vanillage.raytraceantixray.data;
 
-import it.unimi.dsi.fastutil.objects.Object2BooleanMap;
-import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ChunkBlocks {
 
     private final LevelChunk chunk;
-    private final Object2BooleanMap<BlockPos> blocks;
+    private final ConcurrentMap<BlockPos, Boolean> blocks;
     private final AtomicBoolean dirty;
 
-    public ChunkBlocks(LevelChunk chunk, Object2BooleanMap<BlockPos> blocks, boolean dirty) {
+    public ChunkBlocks(LevelChunk chunk, Map<BlockPos, Boolean> blocks, boolean dirty) {
         this.chunk = Objects.requireNonNull(chunk);
-        this.blocks = Objects.requireNonNull(blocks);
+        this.blocks = new ConcurrentHashMap<>(blocks);
         this.dirty = new AtomicBoolean(dirty);
     }
 
-    public ChunkBlocks(LevelChunk chunk, Object2BooleanMap<BlockPos> blocks) {
+    public ChunkBlocks(LevelChunk chunk, Map<BlockPos, Boolean> blocks) {
         this(chunk, blocks, true);
     }
 
@@ -32,8 +33,7 @@ public class ChunkBlocks {
         return chunk.getPos().longKey();
     }
 
-    /// only modify if working on a local copy for thread safety
-    public Object2BooleanMap<BlockPos> getBlocks() {
+    public ConcurrentMap<BlockPos, Boolean> getBlocks() {
         return blocks;
     }
 
@@ -49,7 +49,7 @@ public class ChunkBlocks {
 
     /// copies data without transient values such as the dirty value
     public ChunkBlocks copyWithDataOnly() {
-        return new ChunkBlocks(chunk, new Object2BooleanOpenHashMap<>(blocks));
+        return new ChunkBlocks(chunk, blocks);
     }
 
 }

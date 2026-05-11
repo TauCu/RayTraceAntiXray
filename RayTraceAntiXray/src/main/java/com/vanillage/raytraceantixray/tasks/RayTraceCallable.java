@@ -13,11 +13,11 @@ import com.vanillage.raytraceantixray.util.CachedSectionBlockOcclusionGetter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import org.bukkit.util.Vector;
 
-import java.util.Collection;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -26,11 +26,11 @@ import java.util.logging.Level;
 public class RayTraceCallable implements Callable<Void> {
     private final RayTraceAntiXray plugin;
     private final WorldContext worldContext;
-    private final Collection<ChunkBlocks> chunks;
     private final double rayTraceDistance;
     private final double rayTraceDistanceSquared;
     private final boolean rehideBlocks;
     private final double rehideDistanceSquared;
+    private final boolean[] raytraceHiddenGlobal;
     private final Set<Block> bypassRehideBlocks;
     private final CachedSectionBlockOcclusionGetter cachedSectionBlockOcclusionGetter;
     private final BlockOcclusionCulling blockOcclusionCulling;
@@ -38,13 +38,13 @@ public class RayTraceCallable implements Callable<Void> {
     public RayTraceCallable(RayTraceAntiXray plugin, WorldContext worldContext, ChunkPacketBlockControllerAntiXray chunkPacketBlockControllerAntiXray) {
         this.plugin = plugin;
         this.worldContext = worldContext;
-        this.chunks = worldContext.getChunks();
 
         rayTraceDistance = chunkPacketBlockControllerAntiXray.rayTraceDistance;
         rayTraceDistanceSquared = rayTraceDistance * rayTraceDistance;
         rehideBlocks = chunkPacketBlockControllerAntiXray.rehideBlocks;
         double rehideDistance = chunkPacketBlockControllerAntiXray.rehideDistance;
         rehideDistanceSquared = rehideDistance * rehideDistance;
+        raytraceHiddenGlobal = chunkPacketBlockControllerAntiXray.traceGlobal;
         bypassRehideBlocks = chunkPacketBlockControllerAntiXray.bypassRehideBlocks;
 
         cachedSectionBlockOcclusionGetter = new CachedSectionBlockOcclusionGetter(worldContext, chunkPacketBlockControllerAntiXray.solidGlobal);
@@ -90,7 +90,7 @@ public class RayTraceCallable implements Callable<Void> {
         playerVector.setZ(playerZ);
         Queue<Result> results = worldContext.getResults();
 
-        for (ChunkBlocks chunkBlocks : this.chunks) {
+        for (ChunkBlocks chunkBlocks : worldContext.getChunks()) {
             // only raytrace this chunk if locations have changed or if the chunk itself is dirty (not yet traced)
             if (!chunkBlocks.setDirty(false) && !forceRaytrace)
                 continue; // nothing is dirty here
@@ -108,11 +108,11 @@ public class RayTraceCallable implements Callable<Void> {
                 continue;
             }
 
-            var iterator = chunkBlocks.getBlocks().object2BooleanEntrySet().iterator();
+            var iterator = chunkBlocks.getBlocks().entrySet().iterator();
             while (iterator.hasNext()) {
                 var blockHidden = iterator.next();
                 BlockPos block = blockHidden.getKey();
-                boolean hidden = blockHidden.getBooleanValue();
+                boolean hidden = blockHidden.getValue();
 
                 int x = block.getX();
                 int y = block.getY();
@@ -166,18 +166,7 @@ public class RayTraceCallable implements Callable<Void> {
                         results.add(new Result(chunkBlocks, block, true));
 
                         if (rehideBlocks) {
-                            boolean bypass = false;
-
-                            if (bypassRehideBlocks != null) {
-                                LevelChunkSection section = chunk.getSections()[(y >> 4) - chunk.getMinSectionY()];
-
-                                if (section != null && !section.hasOnlyAir()
-                                        && bypassRehideBlocks.contains(BlockStateUtil.getBlockState(section, x, y, z).getBlock())) {
-                                    bypass = true;
-                                }
-                            }
-
-                            if (bypass) {
+                            if (shouldRemoveRehide(chunk, x, y, z, true)) {
                                 iterator.remove();
                             } else {
                                 blockHidden.setValue(false);
@@ -186,14 +175,37 @@ public class RayTraceCallable implements Callable<Void> {
                             iterator.remove();
                         }
                     }
+
                 } else if (!hidden) {
-                    results.add(new Result(chunkBlocks, block, false));
-                    blockHidden.setValue(true);
+                    if (rehideBlocks && shouldRemoveRehide(chunk, x, y, z, false)) {
+                        // rehide blocks is enabled and the real block has since changed to something that shouldn't be hidden
+                        iterator.remove();
+                    } else {
+                        results.add(new Result(chunkBlocks, block, false));
+                        blockHidden.setValue(true);
+                    }
                 }
+
             }
         }
 
         cachedSectionBlockOcclusionGetter.clearCache();
+    }
+
+    private boolean shouldRemoveRehide(LevelChunk chunk, int x, int y, int z, boolean checkBypassed) {
+        LevelChunkSection section = chunk.getSections()[(y >> 4) - chunk.getMinSectionY()];
+        if (section != null) {
+            if (section.hasOnlyAir()) {
+                return true;
+            } else {
+                BlockState current = BlockStateUtil.getBlockState(section, x, y, z);
+                // has the block changed since it was hidden?
+                return !raytraceHiddenGlobal[BlockStateUtil.BLOCKSTATE_PALETTE.idFor(current)]
+                        // is it bypassed?
+                        || checkBypassed && bypassRehideBlocks != null && bypassRehideBlocks.contains(current.getBlock());
+            }
+        }
+        return false;
     }
 
 }
