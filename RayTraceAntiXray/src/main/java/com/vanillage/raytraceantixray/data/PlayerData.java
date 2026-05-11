@@ -49,7 +49,9 @@ public final class PlayerData {
     }
 
     public synchronized void startUpdateTask() {
-        if (updateTask != null && !updateTask.isCancelled())
+        stopUpdateTask();
+
+        if (!plugin.isRunning())
             return;
 
         updateTask = player.getScheduler().runAtFixedRate(plugin, updateRunnable, null, plugin.getUpdateTicks(), plugin.getUpdateTicks());

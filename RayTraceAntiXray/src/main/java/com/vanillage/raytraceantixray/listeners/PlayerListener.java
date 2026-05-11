@@ -9,6 +9,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 
 import java.util.logging.Level;
 
@@ -46,6 +47,14 @@ public final class PlayerListener implements Listener {
             data.getPacketHandler().detach();
             plugin.getPlayerData().remove(event.getPlayer().getUniqueId(), data);
         }
+    }
+
+    @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent e) {
+        // Restart the update task
+        PlayerData data = plugin.getPlayerData().get(e.getPlayer().getUniqueId());
+        if (data != null)
+            data.startUpdateTask();
     }
 
 }
