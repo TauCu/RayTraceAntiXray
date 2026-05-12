@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.vanillage.raytraceantixray"
-version = "1.18.2"
+version = "1.18.3"
 description = "RayTraceAntiXray"
 java.sourceCompatibility = JavaVersion.VERSION_25
 
