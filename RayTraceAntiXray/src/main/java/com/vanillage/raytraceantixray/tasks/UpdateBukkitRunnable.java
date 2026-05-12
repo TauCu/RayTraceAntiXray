@@ -90,13 +90,14 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
                     if (!world.isChunkLoaded(chunkX, chunkZ))
                         return;
 
-                    List<Packet<?>> remotePackets = buildPacketsForResult(capturedResult, serverLevel, environment);
-                    sendPackets(player, remotePackets, false);
+                    List<Packet<?>> packets = new ArrayList<>();
+                    buildPacketsForResult(packets, capturedResult, serverLevel, environment);
+                    sendPackets(player, packets, false);
                 });
                 continue;
             }
 
-            packetsToSend.addAll(buildPacketsForResult(result, serverLevel, environment));
+            buildPacketsForResult(packetsToSend, result, serverLevel, environment);
         }
 
         sendPackets(player, packetsToSend, false);
@@ -106,7 +107,7 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
      * Builds the block-update packets for a single result.
      * Must be called from a thread that owns the region containing the result's block.
      */
-    private List<Packet<?>> buildPacketsForResult(Result result, ServerLevel serverLevel, Environment environment) {
+    private void buildPacketsForResult(List<Packet<?>> packets, Result result, ServerLevel serverLevel, Environment environment) {
         BlockPos block = result.block();
         BlockState blockState;
         BlockEntity blockEntity = null;
@@ -127,7 +128,6 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
             blockState = Blocks.STONE.defaultBlockState();
         }
 
-        List<Packet<?>> packets = new ArrayList<>();
         packets.add(new ClientboundBlockUpdatePacket(block, blockState));
 
         if (blockEntity != null) {
@@ -135,8 +135,6 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
             if (packet != null)
                 packets.add(packet);
         }
-
-        return packets;
     }
 
     /// callers must not mutate the packets list after passing it to this method
