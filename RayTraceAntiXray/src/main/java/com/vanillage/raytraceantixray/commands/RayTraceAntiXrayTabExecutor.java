@@ -134,7 +134,7 @@ public final class RayTraceAntiXrayTabExecutor implements TabExecutor {
                         plugin.reload();
                         sender.sendMessage(text("Reloaded in " + w.elapsed(TimeUnit.MILLISECONDS) + "ms", GOLD));
                     };
-                    if (BukkitUtil.IS_FOLIA) {
+                    if (BukkitUtil.IS_FOLIA && !Bukkit.isGlobalTickThread()) {
                         Bukkit.getGlobalRegionScheduler().execute(plugin, reload);
                     } else {
                         reload.run();
