@@ -24,17 +24,6 @@ public final class PlayerListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
-        if (BukkitUtil.IS_FOLIA) {
-            // On Folia, PlayerJoinEvent fires on the global-region thread.
-            // player.getEyeLocation() and other entity-local state must be
-            // accessed from the entity's own scheduler thread.
-            player.getScheduler().run(plugin, t -> initPlayer(player), null);
-        } else {
-            initPlayer(player);
-        }
-    }
-
-    private void initPlayer(Player player) {
         try {
             PlayerData data = plugin.tryCreatePlayerDataFor(player);
             if (data == null)

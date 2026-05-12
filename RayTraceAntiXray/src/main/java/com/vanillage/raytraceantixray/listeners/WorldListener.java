@@ -15,8 +15,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Objects;
@@ -24,17 +22,15 @@ import java.util.stream.Collectors;
 
 public final class WorldListener implements Listener {
     /**
-     * VarHandle for {@code Level.chunkPacketBlockController}, used for {@link VarHandle#getAcquire}
-     * reads. A VarHandle obtained for a {@code final} field only supports read access modes, so
-     * writes go through {@link #CHUNK_PACKET_BLOCK_CONTROLLER_FIELD} below.
-     */
-    private static final VarHandle CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE;
-    /**
-     * Reflective handle on {@code Level.chunkPacketBlockController} used for publishing writes.
-     * Paired with a preceding {@link VarHandle#releaseFence()} so that any thread observing the
-     * published reference through {@link VarHandle#getAcquire} also observes the fully-constructed
-     * controller's stores — the same release/acquire happens-before relationship that
-     * {@code setRelease} would have provided, which is unavailable for a {@code final} field.
+     * Reflective handle on {@code Level.chunkPacketBlockController}. The field is declared
+     * {@code final} in Paper/Folia, so a {@link java.lang.invoke.VarHandle} cannot be used for
+     * writes (write access modes are unsupported on final fields and throw
+     * {@code UnsupportedOperationException}). {@link Field#set} on an instance final field still
+     * works after {@link Field#setAccessible}, and both {@link WorldInitEvent} and
+     * {@link WorldUnloadEvent} are dispatched on Folia's global region thread before/after the
+     * world is published to chunk-system workers — Folia's own world-publication machinery
+     * provides the happens-before required for chunk threads to observe the swap, so no extra
+     * memory fencing is needed here.
      */
     private static final Field CHUNK_PACKET_BLOCK_CONTROLLER_FIELD;
 
@@ -43,10 +39,7 @@ public final class WorldListener implements Listener {
             Field field = Level.class.getDeclaredField("chunkPacketBlockController");
             field.setAccessible(true);
             CHUNK_PACKET_BLOCK_CONTROLLER_FIELD = field;
-            CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE =
-                    MethodHandles.privateLookupIn(Level.class, MethodHandles.lookup())
-                            .unreflectVarHandle(field);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+        } catch (NoSuchFieldException e) {
             throw new ExceptionInInitializerError(e);
         }
     }
@@ -84,7 +77,7 @@ public final class WorldListener implements Listener {
             ServerLevel serverLevel = ((CraftWorld) world).getHandle();
             ChunkPacketBlockControllerAntiXray controller = new ChunkPacketBlockControllerAntiXray(
                     plugin,
-                    (ChunkPacketBlockController) CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.getAcquire(serverLevel),
+                    serverLevel.chunkPacketBlockController,
                     rayTraceThirdPerson,
                     rayTraceDistance,
                     rehideBlocks,
@@ -97,10 +90,6 @@ public final class WorldListener implements Listener {
             );
 
             try {
-                // Release fence + plain store: pairs with the reader's getAcquire so the
-                // controller's constructor stores are visible alongside the published reference.
-                // setRelease is unavailable here because the target field is declared final.
-                VarHandle.releaseFence();
                 CHUNK_PACKET_BLOCK_CONTROLLER_FIELD.set(serverLevel, controller);
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
@@ -110,18 +99,11 @@ public final class WorldListener implements Listener {
 
     public static void handleUnload(RayTraceAntiXray plugin, World w) {
         ServerLevel serverLevel = ((CraftWorld) w).getHandle();
-        ChunkPacketBlockController current =
-                (ChunkPacketBlockController) CHUNK_PACKET_BLOCK_CONTROLLER_HANDLE.getAcquire(serverLevel);
-
-        if (current instanceof ChunkPacketBlockControllerAntiXray antiXray) {
+        if (serverLevel.chunkPacketBlockController instanceof ChunkPacketBlockControllerAntiXray antiXray) {
             ChunkPacketBlockController oldController = antiXray.getOldController();
-
             try {
-                // Release fence + plain store: same pattern as handleLoad. setRelease is
-                // unavailable because the target field is declared final.
-                VarHandle.releaseFence();
                 CHUNK_PACKET_BLOCK_CONTROLLER_FIELD.set(serverLevel, oldController);
-            } catch (Exception e) {
+            } catch (IllegalAccessException e) {
                 BukkitUtil.sneakyThrow(e);
             }
         }
