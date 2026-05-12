@@ -2,6 +2,7 @@ package com.vanillage.raytraceantixray.tasks;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.*;
+import com.vanillage.raytraceantixray.util.BukkitUtil;
 import io.netty.channel.Channel;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.minecraft.core.BlockPos;
@@ -12,6 +13,7 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.World.Environment;
@@ -68,40 +70,73 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
                 continue;
 
             BlockPos block = result.block();
+            int chunkX = block.getX() >> 4;
+            int chunkZ = block.getZ() >> 4;
 
             // No need to update an unloaded chunk
-            if (!world.isChunkLoaded(block.getX() >> 4, block.getZ() >> 4))
+            if (!world.isChunkLoaded(chunkX, chunkZ))
                 continue;
 
-            BlockState blockState;
-            BlockEntity blockEntity = null;
+            if (BukkitUtil.IS_FOLIA && !Bukkit.isOwnedByCurrentRegion(world, chunkX, chunkZ)) {
+                // On Folia, dispatch to the region that owns this chunk so we can safely
+                // read block state and send the packet from the correct region thread.
+                // We must NOT drop the result here — the callable already mutated state
+                // (hidden flag / iterator removal) expecting this result to be delivered.
+                final Result capturedResult = result;
+                Bukkit.getRegionScheduler().execute(plugin, world, chunkX, chunkZ, () -> {
+                    // Re-validate: chunk may have been resent or unloaded while the task was queued.
+                    if (context.getChunk(capturedResult.chunkBlocks().getKey()) != capturedResult.chunkBlocks())
+                        return;
+                    if (!world.isChunkLoaded(chunkX, chunkZ))
+                        return;
 
-            if (result.visible()) {
-                blockState = serverLevel.getBlockState(block);
-
-                if (blockState.hasBlockEntity()) {
-                    blockEntity = serverLevel.getBlockEntity(block);
-                }
-            } else if (environment == Environment.NETHER) {
-                blockState = Blocks.NETHERRACK.defaultBlockState();
-            } else if (environment == Environment.THE_END) {
-                blockState = Blocks.END_STONE.defaultBlockState();
-            } else if (block.getY() < 0) {
-                blockState = Blocks.DEEPSLATE.defaultBlockState();
-            } else {
-                blockState = Blocks.STONE.defaultBlockState();
+                    List<Packet<?>> remotePackets = buildPacketsForResult(capturedResult, serverLevel, environment);
+                    sendPackets(player, remotePackets, false);
+                });
+                continue;
             }
 
-            packetsToSend.add(new ClientboundBlockUpdatePacket(block, blockState));
-
-            if (blockEntity != null) {
-                var packet = blockEntity.getUpdatePacket();
-                if (packet != null)
-                    packetsToSend.add(packet);
-            }
+            packetsToSend.addAll(buildPacketsForResult(result, serverLevel, environment));
         }
 
         sendPackets(player, packetsToSend, false);
+    }
+
+    /**
+     * Builds the block-update packets for a single result.
+     * Must be called from a thread that owns the region containing the result's block.
+     */
+    private List<Packet<?>> buildPacketsForResult(Result result, ServerLevel serverLevel, Environment environment) {
+        BlockPos block = result.block();
+        BlockState blockState;
+        BlockEntity blockEntity = null;
+
+        if (result.visible()) {
+            blockState = serverLevel.getBlockState(block);
+
+            if (blockState.hasBlockEntity()) {
+                blockEntity = serverLevel.getBlockEntity(block);
+            }
+        } else if (environment == Environment.NETHER) {
+            blockState = Blocks.NETHERRACK.defaultBlockState();
+        } else if (environment == Environment.THE_END) {
+            blockState = Blocks.END_STONE.defaultBlockState();
+        } else if (block.getY() < 0) {
+            blockState = Blocks.DEEPSLATE.defaultBlockState();
+        } else {
+            blockState = Blocks.STONE.defaultBlockState();
+        }
+
+        List<Packet<?>> packets = new ArrayList<>();
+        packets.add(new ClientboundBlockUpdatePacket(block, blockState));
+
+        if (blockEntity != null) {
+            var packet = blockEntity.getUpdatePacket();
+            if (packet != null)
+                packets.add(packet);
+        }
+
+        return packets;
     }
 
     /// callers must not mutate the packets list after passing it to this method

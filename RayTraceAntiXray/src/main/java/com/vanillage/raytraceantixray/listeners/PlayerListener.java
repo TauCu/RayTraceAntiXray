@@ -2,6 +2,7 @@ package com.vanillage.raytraceantixray.listeners;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.PlayerData;
+import com.vanillage.raytraceantixray.util.BukkitUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -35,7 +36,7 @@ public final class PlayerListener implements Listener {
             if (t instanceof Exception) {
                 plugin.getLogger().log(Level.SEVERE, "Exception raised while creating data for \"" + player + "\" during player join", t);
             } else {
-                throw t;
+                BukkitUtil.sneakyThrow(t);
             }
         }
     }

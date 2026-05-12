@@ -23,7 +23,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.craftbukkit.CraftWorld;
@@ -197,13 +196,20 @@ public final class RayTraceAntiXray extends JavaPlugin {
             PlayerData data = getPlayerData().get(player.getUniqueId());
             if (data == null)
                 continue; // probably npc
-            try {
-                // clear existing xray context
-                data.updateWorldContext(player.getWorld());
-                // resend all chunks
-                reloadChunks0(player);
-            } catch (Exception e) {
-                getLogger().log(Level.WARNING, "Failed to reloadChunks for: " + player, e);
+            Runnable task = () -> {
+                try {
+                    // clear existing xray context
+                    data.updateWorldContext(player.getWorld());
+                    // resend all chunks
+                    reloadChunks0(player);
+                } catch (Exception e) {
+                    getLogger().log(Level.WARNING, "Failed to reloadChunks for: " + player, e);
+                }
+            };
+            if (BukkitUtil.IS_FOLIA && !Bukkit.isOwnedByCurrentRegion(player)) {
+                player.getScheduler().run(this, t -> task.run(), null);
+            } else {
+                task.run();
             }
         }
     }
@@ -272,14 +278,12 @@ public final class RayTraceAntiXray extends JavaPlugin {
         if (!validatePlayer(player))
             return null;
 
-        // create playerdata
+        // create playerdata. Initial ray-trace locations are intentionally left empty —
+        // UpdateBukkitRunnable.update() will populate them on its first tick from the entity
+        // scheduler thread, which is the only place player.getEyeLocation() is guaranteed safe
+        // to read under Folia.
         PlayerData playerData = new PlayerData(this, player);
 
-        // define current locations
-        Location loc = player.getEyeLocation();
-        playerData.getContext().setLocations(RayTraceAntiXray.getLocations(player, playerData.getContext().getWorld(), new VectorialLocation(loc)));
-
-        // add to map
         if (getPlayerData().putIfAbsent(player.getUniqueId(), playerData) != null)
             throw new IllegalStateException("PlayerData already exists for " + player);
 
@@ -312,6 +316,16 @@ public final class RayTraceAntiXray extends JavaPlugin {
     }
 
     private static double getMaxZoom(Entity entity, VectorialLocation location, double maxZoom) {
+        if (BukkitUtil.IS_FOLIA) {
+            Vector pos = location.position();
+            if (!Bukkit.isOwnedByCurrentRegion(entity.getWorld(), pos.getBlockX() >> 4, pos.getBlockZ() >> 4)) {
+                // Can't safely clip() from a foreign region; collapse to the player's eye position
+                // instead of pretending there's no obstacle (which would place the third-person
+                // ray origin inside a wall). The next updateBukkitRunnable tick will refresh this
+                // from the owning region.
+                return 0.;
+            }
+        }
         Vector vector = location.position();
         Vec3 position = new Vec3(vector.getX(), vector.getY(), vector.getZ());
         double positionX = position.x;
