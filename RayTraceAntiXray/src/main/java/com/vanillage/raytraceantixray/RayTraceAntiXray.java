@@ -278,10 +278,6 @@ public final class RayTraceAntiXray extends JavaPlugin {
         if (!validatePlayer(player))
             return null;
 
-        // create playerdata. Initial ray-trace locations are intentionally left empty —
-        // UpdateBukkitRunnable.update() will populate them on its first tick from the entity
-        // scheduler thread, which is the only place player.getEyeLocation() is guaranteed safe
-        // to read under Folia.
         PlayerData playerData = new PlayerData(this, player);
 
         if (getPlayerData().putIfAbsent(player.getUniqueId(), playerData) != null)
@@ -319,11 +315,8 @@ public final class RayTraceAntiXray extends JavaPlugin {
         if (BukkitUtil.IS_FOLIA) {
             Vector pos = location.position();
             if (!Bukkit.isOwnedByCurrentRegion(entity.getWorld(), pos.getBlockX() >> 4, pos.getBlockZ() >> 4)) {
-                // Can't safely clip() from a foreign region; collapse to the player's eye position
-                // instead of pretending there's no obstacle (which would place the third-person
-                // ray origin inside a wall). The next updateBukkitRunnable tick will refresh this
-                // from the owning region.
-                return 0.;
+                // wait for next updateBukkitRunnable tick to refresh this from the owning region.
+                return 0;
             }
         }
         Vector vector = location.position();

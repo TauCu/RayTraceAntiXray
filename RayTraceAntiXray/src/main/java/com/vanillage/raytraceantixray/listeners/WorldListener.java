@@ -21,17 +21,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class WorldListener implements Listener {
-    /**
-     * Reflective handle on {@code Level.chunkPacketBlockController}. The field is declared
-     * {@code final} in Paper/Folia, so a {@link java.lang.invoke.VarHandle} cannot be used for
-     * writes (write access modes are unsupported on final fields and throw
-     * {@code UnsupportedOperationException}). {@link Field#set} on an instance final field still
-     * works after {@link Field#setAccessible}, and both {@link WorldInitEvent} and
-     * {@link WorldUnloadEvent} are dispatched on Folia's global region thread before/after the
-     * world is published to chunk-system workers — Folia's own world-publication machinery
-     * provides the happens-before required for chunk threads to observe the swap, so no extra
-     * memory fencing is needed here.
-     */
+
     private static final Field CHUNK_PACKET_BLOCK_CONTROLLER_FIELD;
 
     static {
