@@ -129,7 +129,11 @@ public final class RayTraceAntiXray extends JavaPlugin {
         HandlerList.unregisterAll(this);
 
         // cancel any global tasks
-        Bukkit.getScheduler().cancelTasks(this);
+        // On Folia, CraftScheduler#cancelTasks throws UnsupportedOperationException —
+        // tasks live per-region, the global region scheduler handles plugin-wide ones.
+        if (!BukkitUtil.IS_FOLIA) {
+            Bukkit.getScheduler().cancelTasks(this);
+        }
         Bukkit.getGlobalRegionScheduler().cancelTasks(this);
 
         // unhook from players
