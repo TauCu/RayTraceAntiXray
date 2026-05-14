@@ -48,7 +48,9 @@ public final class RayTraceTimerTask extends TimerTask {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (RejectedExecutionException e) {
-
+            if (plugin.isRunning()) {
+                plugin.getLogger().log(Level.FINE, "Executor rejected raytrace task", e);
+            }
         } catch (Throwable t) {
             plugin.getLogger().log(Level.SEVERE, "Error thrown while raytracing: ", t);
         }

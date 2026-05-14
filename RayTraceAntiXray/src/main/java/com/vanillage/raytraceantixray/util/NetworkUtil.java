@@ -13,10 +13,8 @@ import java.util.Objects;
 
 public class NetworkUtil {
 
-    private static Field field_serverGamePacketListenerImpl_connection = null;
-
-    private static Field field_regionizedServer_connections = null;
-    private static Object regionizedServerInstance = null;
+    private static volatile Field field_regionizedServer_connections = null;
+    private static volatile Object regionizedServerInstance = null;
 
     @SuppressWarnings("unchecked")
     public static Iterable<Connection> getConnections() {

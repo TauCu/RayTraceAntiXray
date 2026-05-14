@@ -433,6 +433,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         Object2BooleanMap<BlockPos> blocks = new Object2BooleanOpenHashMap<>();
         HashSet<BlockPos> blockEntities = new HashSet<>();
 
+        boolean obfuscationSucceeded = true;
         try {
         for (int chunkSectionIndex = 0; chunkSectionIndex <= maxChunkSectionIndex; chunkSectionIndex++) {
             if (chunkPacketInfoAntiXray.isWritten(chunkSectionIndex) && chunkPacketInfoAntiXray.getPresetValues(chunkSectionIndex) != null) {
@@ -589,18 +590,23 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         } catch (Exception e) {
             // Catch any unexpected exceptions during chunk obfuscation
             // This can happen with FartherViewDistance or other plugins that create chunks
+            obfuscationSucceeded = false;
             if (plugin.handleNag("controller failed obfuscate")) {
                 plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to obfuscate chunk: chunk=%s level=%s".formatted(chunk.getPos(), level), e);
                 plugin.logDebugNagReminder();
             }
-            // Fall through to set the packet as ready anyway
+            // The packet buffer may already be partially mutated. We still cache
+            // the (possibly partial) blocks list so the ray-trace pass can reveal
+            // what was collected — better than leaving obfuscated blocks
+            // permanently hidden. Block-entity removal is gated below to avoid
+            // applying a partially-collected removal set.
         }
 
         if (plugin.isRunning()) {
             plugin.getPacketChunkBlocksCache().put(chunkPacketInfoAntiXray.getChunkPacket(), new ChunkBlocks(chunkPacketInfoAntiXray.getChunk(), blocks));
         }
 
-        if (blockEntities != null && !blockEntities.isEmpty()) {
+        if (obfuscationSucceeded && blockEntities != null && !blockEntities.isEmpty()) {
             try {
                 List<?> blockEntitiesData = (List<?>) BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().getChunkData());
                 // Skip if blockEntitiesData is null or empty - may happen with FartherViewDistance chunks

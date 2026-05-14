@@ -147,6 +147,8 @@ public final class UpdateBukkitRunnable implements Consumer<ScheduledTask> {
             return false;
 
         Channel channel = connection.connection.channel;
+        if (channel == null)
+            return false;
 
         // wrap whole operation in event loop, otherwise Channel#write will do it for each packet
         channel.eventLoop().execute(() -> {
