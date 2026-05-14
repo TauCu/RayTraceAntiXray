@@ -44,9 +44,61 @@ world-settings:
     anti-xray:
       ray-trace: true
       ray-trace-third-person: false
-      ray-trace-distance: 120.0
-      max-ray-trace-block-count-per-chunk: 100
-      rehide-blocks: false
-      rehide-distance: .inf
+      # 64 blocks is a good balance between security and CPU cost.
+      # 120 is excessive — players rarely see ores beyond ~48 blocks in normal gameplay.
+      ray-trace-distance: 64.0
+      max-ray-trace-block-count-per-chunk: 30
+      rehide-blocks: true
+      rehide-distance: 60.0
       bypass-rehide-blocks: []
+      # If this list is empty, the hidden-blocks from the Paper config (paper-world-defaults.yml) are used.
+      # Per-world sections below override this with a curated list for each dimension.
+      ray-trace-blocks: []
+
+  # Overworld — hide all valuable ores including deepslate variants (1.21)
+  world:
+    anti-xray:
+      ray-trace: true
+      ray-trace-distance: 64.0
+      rehide-blocks: true
+      rehide-distance: 60.0
+      max-ray-trace-block-count-per-chunk: 30
+      bypass-rehide-blocks: []
+      ray-trace-blocks:
+      - coal_ore
+      - deepslate_coal_ore
+      - iron_ore
+      - deepslate_iron_ore
+      - copper_ore
+      - deepslate_copper_ore
+      - gold_ore
+      - deepslate_gold_ore
+      - redstone_ore
+      - deepslate_redstone_ore
+      - emerald_ore
+      - deepslate_emerald_ore
+      - lapis_ore
+      - deepslate_lapis_ore
+      - diamond_ore
+      - deepslate_diamond_ore
+
+  # Nether — hide quartz, gold and ancient debris
+  world_nether:
+    anti-xray:
+      ray-trace: true
+      ray-trace-distance: 64.0
+      rehide-blocks: true
+      rehide-distance: 60.0
+      max-ray-trace-block-count-per-chunk: 30
+      bypass-rehide-blocks: []
+      ray-trace-blocks:
+      - nether_gold_ore
+      - nether_quartz_ore
+      - ancient_debris
+
+  # The End — no valuable ores to hide; ray tracing is disabled to save resources.
+  # Enable and populate ray-trace-blocks if you add custom ores via datapacks or mods.
+  world_the_end:
+    anti-xray:
+      ray-trace: false
       ray-trace-blocks: []
