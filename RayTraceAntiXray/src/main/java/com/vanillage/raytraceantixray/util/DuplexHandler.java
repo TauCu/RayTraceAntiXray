@@ -6,6 +6,7 @@ import io.netty.channel.ChannelPipeline;
 import org.bukkit.entity.Player;
 
 import java.net.InetAddress;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class DuplexHandler extends ChannelDuplexHandler {
@@ -18,13 +19,11 @@ public class DuplexHandler extends ChannelDuplexHandler {
         this.name = Objects.requireNonNull(name);
     }
 
-    public String getAttachedName() {
+    public String getName() {
         return name;
     }
 
-    public Channel getAttachedChannel() {
-        if (channel != null && channel.pipeline().get(name) != this)
-            channel = null;
+    public Channel getCurrentChannel() {
         return channel;
     }
 
@@ -37,22 +36,36 @@ public class DuplexHandler extends ChannelDuplexHandler {
     }
 
     public void attach(Channel channel) {
-        detach();
-        ChannelPipeline pipe = channel.pipeline();
-        detach(channel, name);
-        if (pipe.get("packet_handler") == null) {
-            pipe.addLast(name, this);
-        } else {
-            pipe.addBefore("packet_handler", name, this);
+        synchronized (DuplexHandler.class) {
+            detach();
+            detach(channel, name);
+            addBeforeHandler(channel.pipeline());
+            this.channel = channel;
         }
-        this.channel = channel;
+    }
+
+    private void addBeforeHandler(ChannelPipeline pipe) {
+        while (true) {
+            try {
+                pipe.addBefore("packet_handler", name, this);
+            } catch (NoSuchElementException ignored) {
+                // packet handler hasn't been added yet.
+                pipe.addLast(name, this);
+                // packet_handler might have been added while doing this. If so, remove ourselves and try again.
+                if (pipe.get("packet_handler") != null) {
+                    // allow this to raise an exception if another thread is messing with this handler.
+                    pipe.remove(this);
+                    continue;
+                }
+            }
+            break;
+        }
     }
 
     public void detach() throws RuntimeException {
-        if (channel != null) {
+        Channel channel = this.channel;
+        if (channel != null)
             detach(channel, name);
-            channel = null;
-        }
     }
 
     public static void detach(Player player, String name) throws RuntimeException {
@@ -63,12 +76,13 @@ public class DuplexHandler extends ChannelDuplexHandler {
         detach(NetworkUtil.getChannelOrThrow(NetworkUtil.getServerConnectionOrThrow(address)), name);
     }
 
-    public static void detach(Channel channel, String name) {
+    public static synchronized void detach(Channel channel, String name) {
         ChannelPipeline pipeline = channel.pipeline();
-        if (pipeline.get(name) != null) {
-            if (pipeline.remove(name) instanceof DuplexHandler handler) {
-                handler.channel = null;
-            }
+        if (pipeline.get(name) instanceof DuplexHandler handler) {
+            try {
+                pipeline.remove(handler);
+            } catch (NoSuchElementException ignored) {}
+            handler.channel = null;
         }
     }
 
