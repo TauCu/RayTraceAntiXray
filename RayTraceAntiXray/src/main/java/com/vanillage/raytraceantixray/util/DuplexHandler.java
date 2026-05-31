@@ -6,7 +6,6 @@ import io.netty.channel.ChannelPipeline;
 import org.bukkit.entity.Player;
 
 import java.net.InetAddress;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class DuplexHandler extends ChannelDuplexHandler {
@@ -40,6 +39,7 @@ public class DuplexHandler extends ChannelDuplexHandler {
     public void attach(Channel channel) {
         detach();
         ChannelPipeline pipe = channel.pipeline();
+        detach(channel, name);
         if (pipe.get("packet_handler") == null) {
             pipe.addLast(name, this);
         } else {
@@ -64,11 +64,12 @@ public class DuplexHandler extends ChannelDuplexHandler {
     }
 
     public static void detach(Channel channel, String name) {
-        try {
-            if (channel.pipeline().remove(name) instanceof DuplexHandler handler) {
+        ChannelPipeline pipeline = channel.pipeline();
+        if (pipeline.get(name) != null) {
+            if (pipeline.remove(name) instanceof DuplexHandler handler) {
                 handler.channel = null;
             }
-        } catch (NoSuchElementException ignored) {}
+        }
     }
 
 }
