@@ -129,7 +129,8 @@ public final class RayTraceAntiXray extends JavaPlugin {
         HandlerList.unregisterAll(this);
 
         // cancel any global tasks
-        Bukkit.getScheduler().cancelTasks(this);
+        if (!BukkitUtil.IS_FOLIA)
+            Bukkit.getScheduler().cancelTasks(this);
         Bukkit.getGlobalRegionScheduler().cancelTasks(this);
 
         // unhook from players
