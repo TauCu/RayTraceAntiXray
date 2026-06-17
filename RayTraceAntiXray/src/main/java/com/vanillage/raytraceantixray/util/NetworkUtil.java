@@ -1,6 +1,8 @@
 package com.vanillage.raytraceantixray.util;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelPipeline;
 import net.minecraft.network.Connection;
 import net.minecraft.server.MinecraftServer;
 import org.bukkit.Bukkit;
@@ -9,6 +11,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class NetworkUtil {
@@ -59,6 +62,24 @@ public class NetworkUtil {
             }
         }
         return null;
+    }
+
+    protected static void addBeforeHandler(ChannelPipeline pipe, String name, ChannelHandler handler) {
+        while (true) {
+            try {
+                pipe.addBefore("packet_handler", name, handler);
+            } catch (NoSuchElementException ignored) {
+                // packet handler hasn't been added yet.
+                pipe.addLast(name, handler);
+                // packet_handler might have been added while doing this. If so, remove ourselves and try again.
+                if (pipe.get("packet_handler") != null) {
+                    // allow this to raise an exception if another thread is messing with this handler.
+                    pipe.remove(handler);
+                    continue;
+                }
+            }
+            break;
+        }
     }
 
 }

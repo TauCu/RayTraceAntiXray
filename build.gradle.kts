@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.vanillage.raytraceantixray"
-version = "1.18.5"
+version = "1.18.6"
 description = "RayTraceAntiXray"
 java.sourceCompatibility = JavaVersion.VERSION_25
 
@@ -13,11 +13,10 @@ repositories {
     mavenCentral()
 
     maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://repo.papermc.io/repository/maven-snapshots/")
 }
 
 dependencies {
-    paperweight.paperDevBundle("26.1.2.build.66-stable")
+    paperweight.paperDevBundle("26.2.build.15-alpha")
 }
 
 java {

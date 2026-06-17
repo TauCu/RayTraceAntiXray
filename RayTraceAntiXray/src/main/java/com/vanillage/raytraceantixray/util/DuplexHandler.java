@@ -9,7 +9,7 @@ import java.net.InetAddress;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-public class DuplexHandler extends ChannelDuplexHandler {
+public abstract class DuplexHandler extends ChannelDuplexHandler {
 
     private final String name;
 
@@ -39,26 +39,8 @@ public class DuplexHandler extends ChannelDuplexHandler {
         synchronized (DuplexHandler.class) {
             detach();
             detach(channel, name);
-            addBeforeHandler(channel.pipeline());
+            NetworkUtil.addBeforeHandler(channel.pipeline(), name, this);
             this.channel = channel;
-        }
-    }
-
-    private void addBeforeHandler(ChannelPipeline pipe) {
-        while (true) {
-            try {
-                pipe.addBefore("packet_handler", name, this);
-            } catch (NoSuchElementException ignored) {
-                // packet handler hasn't been added yet.
-                pipe.addLast(name, this);
-                // packet_handler might have been added while doing this. If so, remove ourselves and try again.
-                if (pipe.get("packet_handler") != null) {
-                    // allow this to raise an exception if another thread is messing with this handler.
-                    pipe.remove(this);
-                    continue;
-                }
-            }
-            break;
         }
     }
 

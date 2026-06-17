@@ -4,8 +4,8 @@ import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.antixray.ChunkPacketBlockControllerAntiXray;
 import com.vanillage.raytraceantixray.util.BukkitUtil;
 import io.papermc.paper.antixray.ChunkPacketBlockController;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.Level;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -76,7 +76,7 @@ public final class WorldListener implements Listener {
                     rayTraceBlocks.isEmpty() ? null : rayTraceBlocks,
                     bypassRehideBlocks.isEmpty() ? null : bypassRehideBlocks,
                     serverLevel,
-                    MinecraftServer.getServer().executor
+                    Util.backgroundExecutor()
             );
 
             try {
