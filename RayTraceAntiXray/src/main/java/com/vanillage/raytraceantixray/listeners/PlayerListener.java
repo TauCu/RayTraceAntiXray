@@ -44,7 +44,7 @@ public final class PlayerListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         PlayerData data = plugin.getPlayerData().get(event.getPlayer().getUniqueId());
         if (data != null) {
-            data.getPacketHandler().detach();
+            data.invalidate();
             plugin.getPlayerData().remove(event.getPlayer().getUniqueId(), data);
         }
     }

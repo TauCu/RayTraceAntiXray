@@ -71,4 +71,9 @@ public final class PlayerData {
         return newCtx;
     }
 
+    public void invalidate() {
+        stopUpdateTask();
+        getPacketHandler().detach();
+    }
+
 }
