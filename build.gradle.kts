@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.vanillage.raytraceantixray"
-version = "1.18.6"
+version = "1.18.7"
 description = "RayTraceAntiXray"
 java.sourceCompatibility = JavaVersion.VERSION_25
 
@@ -16,6 +16,7 @@ repositories {
 }
 
 dependencies {
+    //paperweight.foliaDevBundle("26.1.2.build.8-stable")
     paperweight.paperDevBundle("26.2.build.15-alpha")
 }
 

@@ -1,7 +1,7 @@
 package com.vanillage.raytraceantixray.data;
 
 import com.vanillage.raytraceantixray.RayTraceAntiXray;
-import com.vanillage.raytraceantixray.net.DuplexPacketHandler;
+import com.vanillage.raytraceantixray.net.PacketHandler;
 import com.vanillage.raytraceantixray.tasks.UpdateBukkitRunnable;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.World;
@@ -11,7 +11,7 @@ public final class PlayerData {
 
     private final RayTraceAntiXray plugin;
     private final Player player;
-    private final DuplexPacketHandler packetHandler;
+    private final PacketHandler packetHandler;
     private final UpdateBukkitRunnable updateRunnable;
     private ScheduledTask updateTask;
     private volatile WorldContext context;
@@ -19,7 +19,7 @@ public final class PlayerData {
     public PlayerData(RayTraceAntiXray plugin, Player player) {
         this.plugin = plugin;
         this.player = player;
-        this.packetHandler = new DuplexPacketHandler(plugin, this);
+        this.packetHandler = new PacketHandler(plugin, this);
         this.updateRunnable = new UpdateBukkitRunnable(plugin, this);
         updateWorldContext(player.getWorld());
     }
@@ -36,7 +36,7 @@ public final class PlayerData {
         this.context = ctx;
     }
 
-    public DuplexPacketHandler getPacketHandler() {
+    public PacketHandler getPacketHandler() {
         return packetHandler;
     }
 

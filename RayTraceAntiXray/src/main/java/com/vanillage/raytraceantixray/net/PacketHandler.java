@@ -4,9 +4,11 @@ import com.vanillage.raytraceantixray.RayTraceAntiXray;
 import com.vanillage.raytraceantixray.data.ChunkBlocks;
 import com.vanillage.raytraceantixray.data.PlayerData;
 import com.vanillage.raytraceantixray.data.WorldContext;
-import com.vanillage.raytraceantixray.util.DuplexHandler;
+import com.vanillage.raytraceantixray.util.AttachableDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
+import net.minecraft.network.HandlerNames;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundRespawnPacket;
@@ -14,17 +16,29 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftWorld;
 
-public class DuplexPacketHandler extends DuplexHandler {
+import java.util.NoSuchElementException;
 
-    public static final String NAME = "com.vanillage.raytraceantixray:duplex_handler";
+public class PacketHandler extends AttachableDuplexHandler {
+
+    public static final String NAME = "com.vanillage.raytraceantixray:handler";
 
     private final RayTraceAntiXray plugin;
     private final PlayerData playerData;
 
-    public DuplexPacketHandler(RayTraceAntiXray plugin, PlayerData playerData) {
+    public PacketHandler(RayTraceAntiXray plugin, PlayerData playerData) {
         super(NAME);
         this.plugin = plugin;
         this.playerData = playerData;
+    }
+
+    @Override
+    protected boolean inject(ChannelPipeline pipeline, String name) {
+        try {
+            pipeline.addBefore(HandlerNames.PACKET_HANDLER, name, this);
+        } catch (NoSuchElementException e) {
+            pipeline.addLast(name, this);
+        }
+        return true;
     }
 
     /// Invoked when a packet is written (clientbound)<br>
