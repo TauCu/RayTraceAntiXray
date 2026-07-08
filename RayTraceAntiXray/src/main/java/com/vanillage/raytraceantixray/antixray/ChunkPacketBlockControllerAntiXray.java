@@ -275,7 +275,6 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         LevelChunk chunk = chunkPacketInfo.getChunk();
         int x = chunk.getPos().x();
         int z = chunk.getPos().z();
-
         Level level = chunk.getLevel();
         ((ChunkPacketInfoAntiXray) chunkPacketInfo).setNearbyChunks(level.getChunkIfLoaded(x - 1, z), level.getChunkIfLoaded(x + 1, z), level.getChunkIfLoaded(x, z - 1), level.getChunkIfLoaded(x, z + 1));
         executor.execute((Runnable) chunkPacketInfo);
@@ -341,7 +340,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
             chunkPacketInfoAntiXray.getChunkPacket().setReady(true);
             return;
         }
-        
+
         try {
             // Verify chunk level is accessible
             Level level = chunk.getLevel();
@@ -372,14 +371,14 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
         LevelChunkSection[] nearbyChunkSections = new LevelChunkSection[4];
         Level level = chunk.getLevel();
         int maxChunkSectionIndex = Math.min((maxBlockHeight >> 4) - chunk.getMinSectionY(), chunk.getSectionsCount()) - 1;
-        
+
         // Validate buffer - Other plugins may provide incomplete data
         byte[] buffer = chunkPacketInfoAntiXray.getBuffer();
         if (buffer == null || buffer.length == 0) {
             chunkPacketInfoAntiXray.getChunkPacket().setReady(true);
             return;
         }
-        
+
         boolean[] solidTemp = null;
         boolean[] obfuscateTemp = null;
         boolean[] traceTemp = null;
