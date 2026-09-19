@@ -1,10 +1,10 @@
 plugins {
     id("java")
-    id("io.papermc.paperweight.userdev").version("2.0.0-beta.21")
+    id("io.papermc.paperweight.userdev").version("2.0.0-beta.23")
 }
 
 group = "com.vanillage.raytraceantixray"
-version = "1.18.7"
+version = "1.18.8"
 description = "RayTraceAntiXray"
 java.sourceCompatibility = JavaVersion.VERSION_25
 
@@ -17,7 +17,7 @@ repositories {
 
 dependencies {
     //paperweight.foliaDevBundle("26.1.2.build.8-stable")
-    paperweight.paperDevBundle("26.2.build.15-alpha")
+    paperweight.paperDevBundle("26.3.build.24-alpha")
 }
 
 java {

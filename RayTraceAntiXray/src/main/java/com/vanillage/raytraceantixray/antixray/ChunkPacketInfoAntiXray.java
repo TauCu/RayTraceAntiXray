@@ -1,7 +1,6 @@
 package com.vanillage.raytraceantixray.antixray;
 
 import io.papermc.paper.antixray.ChunkPacketInfo;
-import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 
@@ -10,8 +9,8 @@ public final class ChunkPacketInfoAntiXray extends ChunkPacketInfo<BlockState> i
     private final ChunkPacketBlockControllerAntiXray chunkPacketBlockControllerAntiXray;
     private LevelChunk[] nearbyChunks;
 
-    public ChunkPacketInfoAntiXray(ClientboundLevelChunkWithLightPacket chunkPacket, LevelChunk chunk, ChunkPacketBlockControllerAntiXray chunkPacketBlockControllerAntiXray) {
-        super(chunkPacket, chunk);
+    public ChunkPacketInfoAntiXray(LevelChunk chunk, ChunkPacketBlockControllerAntiXray chunkPacketBlockControllerAntiXray) {
+        super(chunk);
         this.chunkPacketBlockControllerAntiXray = chunkPacketBlockControllerAntiXray;
     }
 

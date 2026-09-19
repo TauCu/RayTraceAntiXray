@@ -260,9 +260,9 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
     }
 
     @Override
-    public ChunkPacketInfoAntiXray getChunkPacketInfo(ClientboundLevelChunkWithLightPacket chunkPacket, LevelChunk chunk) {
+    public ChunkPacketInfo<BlockState> getChunkPacketInfo(LevelChunk chunk) {
         // Return a new instance to collect data and objects in the right state while creating the chunk packet for thread safe access later
-        return new ChunkPacketInfoAntiXray(chunkPacket, chunk, this);
+        return new ChunkPacketInfoAntiXray(chunk, this);
     }
 
     @Override
@@ -600,7 +600,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
 
         if (blockEntities != null && !blockEntities.isEmpty()) {
             try {
-                List<?> blockEntitiesData = (List<?>) BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().getChunkData());
+                List<?> blockEntitiesData = (List<?>) BLOCK_ENTITIES_DATA_FIELD.get(chunkPacketInfoAntiXray.getChunkPacket().chunkData());
                 // Skip if blockEntitiesData is null or empty - may happen with FartherViewDistance chunks
                 if (blockEntitiesData != null && !blockEntitiesData.isEmpty()) {
                     // ensure mutable and replace when filtered
@@ -620,7 +620,7 @@ public final class ChunkPacketBlockControllerAntiXray extends ChunkPacketBlockCo
                         }
                     });
 
-                    BLOCK_ENTITIES_DATA_FIELD.set(chunkPacketInfoAntiXray.getChunkPacket().getChunkData(), blockEntitiesData);
+                    BLOCK_ENTITIES_DATA_FIELD.set(chunkPacketInfoAntiXray.getChunkPacket().chunkData(), blockEntitiesData);
                 }
             // TODO: Also remove from chunkPacketInfoAntiXray.getChunkPacket().getExtraPackets(), however, it's unlikely that it contains anything.
             } catch (IllegalAccessException e) {
