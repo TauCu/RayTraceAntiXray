@@ -17,7 +17,7 @@ repositories {
 
 dependencies {
     //paperweight.foliaDevBundle("26.1.2.build.8-stable")
-    paperweight.paperDevBundle("26.3.build.24-alpha")
+    paperweight.paperDevBundle("26.3.build.147-beta")
 }
 
 java {
